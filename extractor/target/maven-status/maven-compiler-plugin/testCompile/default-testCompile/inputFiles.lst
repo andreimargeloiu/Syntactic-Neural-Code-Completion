@@ -1,0 +1,14 @@
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/AssignabilityAnalysisTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/ComputedFromTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/TokenAssociationTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/FeatureGraphInvariantTests.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/TypeScannerTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/FormalArgTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/GuardedByTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/SymbolScannerTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/LastLexicalUseTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/AstScannerTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/FeaturePluginTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/FeatureGraphChecksTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/DataflowTest.java
+/Users/andrei/Documents/GitHub/features-javac/extractor/src/test/java/uk/ac/cam/acr31/features/javac/CommentAssociationTest.java

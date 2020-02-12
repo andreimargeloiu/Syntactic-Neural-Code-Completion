@@ -1,0 +1,17 @@
+uk/ac/cam/acr31/features/javac/SymbolScannerTest.class
+uk/ac/cam/acr31/features/javac/FeatureGraphChecksTest$1.class
+uk/ac/cam/acr31/features/javac/FeaturePluginTest.class
+uk/ac/cam/acr31/features/javac/FeatureGraphInvariantTests.class
+uk/ac/cam/acr31/features/javac/FeatureGraphChecksTest$2.class
+uk/ac/cam/acr31/features/javac/TypeScannerTest.class
+uk/ac/cam/acr31/features/javac/TokenAssociationTest$1.class
+uk/ac/cam/acr31/features/javac/AssignabilityAnalysisTest.class
+uk/ac/cam/acr31/features/javac/TokenAssociationTest.class
+uk/ac/cam/acr31/features/javac/GuardedByTest.class
+uk/ac/cam/acr31/features/javac/CommentAssociationTest.class
+uk/ac/cam/acr31/features/javac/FormalArgTest.class
+uk/ac/cam/acr31/features/javac/AstScannerTest.class
+uk/ac/cam/acr31/features/javac/LastLexicalUseTest.class
+uk/ac/cam/acr31/features/javac/ComputedFromTest.class
+uk/ac/cam/acr31/features/javac/DataflowTest.class
+uk/ac/cam/acr31/features/javac/FeatureGraphChecksTest.class

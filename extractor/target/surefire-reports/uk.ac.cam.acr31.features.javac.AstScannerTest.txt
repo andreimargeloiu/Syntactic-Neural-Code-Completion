@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: uk.ac.cam.acr31.features.javac.AstScannerTest
+-------------------------------------------------------------------------------
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.297 sec
