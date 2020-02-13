@@ -11,28 +11,27 @@ Options:
     --debug              debug mode [default: False]
 """
 
-
 from docopt import docopt
+from graph_pb2 import Graph
 
-from proto.graph_pb2 import Graph
 
-
-def hello_world():
-    print("Hello World")
-    print("-----")
-
-# TODO
-def compute_grammar():
-    return None
 
 def get_graph_from_file(file_path):
-    with open(file_path, 'r') as f:
+    if not file_path.endswith('.java.proto'):
+        print("Give the path only to files that end in .java.proto")
+        exit(-1)
+    with open(file_path, 'rb') as f:
         g = Graph()
         g.ParseFromString(f.read())
 
-        print(g)
+        aux_set = set()
+        for node in g.node:
+            aux_set.add(node.contents)
+
+        print(aux_set)
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    hello_world()
     print(args)
+
+    get_graph_from_file(args['CORPUS_DATA_DIR'])

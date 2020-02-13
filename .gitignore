@@ -333,3 +333,7 @@ ASALocalRun/
 *.java.dot
 *.java.png
 *.java.proto
+dot/target
+proto/target/*
+extractor/target/*
+grammar_rules.txt

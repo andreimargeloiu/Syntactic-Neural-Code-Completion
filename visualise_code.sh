@@ -33,4 +33,6 @@ java -jar "$PWD"/dot/target/features-javac-dot-1.0.0-SNAPSHOT-jar-with-dependenc
 
 dot -Tpng "$1".dot > "$1".png
 
-# open "$1".png
+rm "$1".dot
+
+open "$1".png
