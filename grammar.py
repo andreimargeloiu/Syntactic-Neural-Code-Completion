@@ -12,6 +12,8 @@ Options:
     --debug              debug mode [default: False]
 """
 import os
+import re
+
 from docopt import docopt
 from graph_pb2 import Graph, FeatureEdge, FeatureNode
 
@@ -98,7 +100,7 @@ class TreeNode:
         Create this subtree.
         """
         node = nodes_dict[node_id]
-        print(f"node_id: {node_id} with children {children_dict[node_id]}")
+        # print(f"node_id: {node_id} with children {children_dict[node_id]}")
 
         # corner case: leaf (token)
         if len(children_dict[node_id]) == 0:
@@ -148,14 +150,28 @@ class Grammar:
             output.write(self.__repr__())
 
     @staticmethod
-    def load(file_name):
+    def load(file_name='grammar_rules.txt'):
         # TODO finish
-        with open(file_name, 'r') as input:
-            for line in input.readline():
-                print(line)
+        grammar = Grammar()
+        with open(file_name, 'r') as f:
+            for line in f:
+                rules_split = re.compile("->|,").split(line)
+                rules_split = [str.strip(str(elem), ' \n') for elem in rules_split]
+
+                assert len(rules_split) > 1
+
+                grammar.rules.add(Rule(rules_split[0], rules_split[1:]))
+
+        return grammar
 
     def __repr__(self):
-        return '\n'.join(str(rule) for rule in self.rules)
+        # sort rules string
+        rules_strings = []
+        for rule in list(self.rules):
+            rules_strings.append(str(rule))
+        rules_strings.sort()
+
+        return '\n'.join(str(rule) for rule in rules_strings)
 
 # Auxiliary methods
 def create_tree(g: Graph):
@@ -199,4 +215,14 @@ if __name__ == '__main__':
     args = docopt(__doc__)
 
     # Debug.print_all_edge(args['CORPUS_DATA_DIR'], args['--node_id'])
-    Grammar.create_grammar(args['CORPUS_DATA_DIR'], args['--is_file']).save()
+
+
+
+    # Assert saving and loading a grammar works
+    grammar = Grammar.create_grammar(args['CORPUS_DATA_DIR'], args['--is_file'])
+    grammar.save()
+    grammar_loaded = Grammar.load()
+    assert str(grammar) == str(grammar_loaded)
+    print("Grammar successfully saved and loaded.")
+
+
