@@ -127,6 +127,8 @@ class Grammar:
         """
         Create grammar from some given .proto files
         """
+        # TODO rules can have non-deterministic length on the RHS
+
         if not os.path.exists(path):
             raise Exception("File to create grammar does not exist")
 
