@@ -11,6 +11,7 @@ Options:
     --node_id=<n>       id of parent node (for debug) [default: -1]
     --debug              debug mode [default: False]
 """
+import math
 import os
 import re
 
@@ -35,6 +36,7 @@ token_names = {
     15: 'AST_LEAF'
 }
 
+
 class Rule:
     """
     A rule object inspired from context-free grammars.
@@ -44,7 +46,7 @@ class Rule:
         assert parent is not None and children is not None and len(children) > 0
 
         self.parent = parent
-        self.children = tuple(children) # use tuple instead list because it allows to use __hash__()
+        self.children = tuple(children)  # use tuple instead list because it allows to use __hash__()
 
     def __eq__(self, other):
         return self.parent == other.parent and self.children == other.children
@@ -62,8 +64,11 @@ class TreeNode:
     """
 
     def __init__(self, feature_node: FeatureNode, children):
+        # all nodes should have a startPosition and endPosition
+        assert feature_node.startPosition != -1 and feature_node.endPosition != -1
+
         self.feature_node = feature_node  # FeatureNode extracted from the .proto file
-        self.children = children  # List of children from left to right
+        self.children = children  # List of children sorted from left to right
 
     @property
     def contents(self):
@@ -122,6 +127,18 @@ class Grammar:
     def __init__(self):
         self.rules = set()
 
+    def add_rules(self, path):
+        """
+        Compute the rules from a file and add them to this Grammar
+        """
+        with open(path, 'rb') as f:
+            g = Graph()
+            g.ParseFromString(f.read())
+
+            root = create_tree(g)
+            for rule in root.compute_rules():
+                grammar.rules.add(rule)
+
     @staticmethod
     def create_grammar(path, is_file=True):
         """
@@ -153,7 +170,6 @@ class Grammar:
 
     @staticmethod
     def load(file_name='grammar_rules.txt'):
-        # TODO finish
         grammar = Grammar()
         with open(file_name, 'r') as f:
             for line in f:
@@ -175,27 +191,59 @@ class Grammar:
 
         return '\n'.join(str(rule) for rule in rules_strings)
 
+
 # Auxiliary methods
 def create_tree(g: Graph):
     """
-    Converts the Graph into a TreeNode
+    Converts a Graph into a TreeNode
     """
-    # initialise children list for all nodes
+    # create dictionary with notes and edges
     nodes_dict = dict()
+    edges_dict = dict()
     children_dict = dict()
     for node in g.node:
         nodes_dict[node.id] = node
+        edges_dict[node.id] = []
         children_dict[node.id] = []
 
     for edge in g.edge:
-        if edge.type == FeatureEdge.EdgeType.AST_CHILD:
+        edges_dict[edge.sourceId].append(edge)  # edges for the intermediate graph to fill the startPosition
+        if edge.type == FeatureEdge.EdgeType.AST_CHILD:  # edges for the TreeNode
             children_dict[edge.sourceId].append(edge.destinationId)
 
-    # sort the list of children from left to right (the parse hives nodes ids in ascending order)
+    # fill the missing startPosition and endPosition
     for node in g.node:
-        children_dict[node.id].sort()
+        modify_startend_positions(node.id, nodes_dict, edges_dict)
+
+    # sort the list of children based on the starting position.
+    for node in g.node:
+        children_dict[node.id].sort(key=lambda x: (nodes_dict[x].startPosition, nodes_dict[x].endPosition))
 
     return TreeNode.from_graph(0, nodes_dict, children_dict)
+
+
+def modify_startend_positions(node_id, nodes_dict, edges_dict):
+    """
+    Recursively iterates the tree and updates the startPosition
+    and endPosition with that of the subtree.
+    """
+    node = nodes_dict[node_id]
+    if node.startPosition != -1:
+        return node.startPosition, node.endPosition
+
+    start_position = (int)(1e8)
+    end_position = -1
+
+    for edge in edges_dict[node_id]:
+        child_start, child_end = modify_startend_positions(edge.destinationId, nodes_dict, edges_dict)
+        start_position = min(start_position, child_start)
+        end_position = max(end_position, child_end)
+
+    # modify this node
+    nodes_dict[node_id].startPosition = start_position
+    nodes_dict[node_id].endPosition = end_position
+
+    return start_position, end_position
 
 
 class Debug:
@@ -218,13 +266,9 @@ if __name__ == '__main__':
 
     # Debug.print_all_edge(args['CORPUS_DATA_DIR'], args['--node_id'])
 
-
-
     # Assert saving and loading a grammar works
     grammar = Grammar.create_grammar(args['CORPUS_DATA_DIR'], args['--is_file'])
     grammar.save()
     grammar_loaded = Grammar.load()
     assert str(grammar) == str(grammar_loaded)
-    print("Grammar successfully saved and loaded.")
-
-
+    print("Grammar successfully saved.")
