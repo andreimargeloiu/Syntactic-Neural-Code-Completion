@@ -82,22 +82,62 @@ class TreeNode:
     def is_preterminal(self):
         return len(self.children) == 1 and self.children[0].is_leaf
 
+    def get_node_rule(self):
+        """
+        Return the rule of this node
+        """
+        # If node is leaf or preterminal, t
+        if self.is_leaf or len(self.children) == 0:
+            return []
+        else:
+            # compute the
+            children_contents = []
+            for child in self.children:
+                # IDENTIFIER_TOKEN have the .contents as the token name "test_foo"
+                # However, I will add IDENTIFIER_TOKEN instead of the identifier name,
+                # because we'll not predict the identifier's name
+
+                # For IdentifierTokens add IDENTIFIER_TOKEN
+                if child.feature_node.type == FeatureNode.NodeType.IDENTIFIER_TOKEN:
+                    children_contents.append(token_names[child.feature_node.type])
+                # For Tokens, the compiler doesn't give very precise outputs
+                # Clear signs such as PLUS, EQ are in capital letters.
+                # Constants (e.g., 102, 'my_string') have the type TOKEN, while
+                # also things from the language 'int', 'void' are of type token
+                # However, as I can't distinguish between them, I will consider
+                # everything that is capital case to be from the language (thus
+                # store their .contents) and everything which is not capital, I
+                # will store the type TOKEN
+                elif child.feature_node.type == FeatureNode.NodeType.TOKEN:
+                    if all(x.isupper() for x in child.feature_node.contents): # If it's a Java token eg: PLUS, EQ
+                        children_contents.append(child.contents)
+                    else:
+                        children_contents.append(token_names[child.feature_node.type])
+                else:
+                    children_contents.append(child.contents)
+
+            return [Rule(self.contents, children_contents)]
+
     def compute_rules(self) -> [Rule]:
         """
         :return: list of rules from this subtree
         """
-        # Corner case if it's leaf or preterminal, we don't care about the rule
-        if self.is_leaf or self.is_preterminal:
-            return []
-
         # Rule of this node
-        rules = [Rule(self.contents, [child.contents for child in self.children])]
+        rules = self.get_node_rule()
 
         # Rules of children
         for child in self.children:
             rules.extend(child.compute_rules())
 
         return rules
+
+    def to_action_sequence(self):
+        """
+        Decompose each method subtree into a sequence of actions.
+        """
+        methods_actions = []
+
+        return methods_actions
 
     @staticmethod
     def from_graph(node_id: int, nodes_dict: dict, children_dict: dict):
@@ -160,6 +200,7 @@ class Grammar:
 
                 root = create_tree(g)
                 for rule in root.compute_rules():
+                    print(rule)
                     grammar.rules.add(rule)
 
         return grammar
@@ -208,7 +249,7 @@ def create_tree(g: Graph):
 
     for edge in g.edge:
         edges_dict[edge.sourceId].append(edge)  # edges for the intermediate graph to fill the startPosition
-        if edge.type == FeatureEdge.EdgeType.AST_CHILD:  # edges for the TreeNode
+        if edge.type in (FeatureEdge.EdgeType.AST_CHILD, FeatureEdge.EdgeType.ASSOCIATED_TOKEN):  # edges for the TreeNode
             children_dict[edge.sourceId].append(edge.destinationId)
 
     # fill the missing startPosition and endPosition
@@ -244,6 +285,10 @@ def modify_startend_positions(node_id, nodes_dict, edges_dict):
     nodes_dict[node_id].endPosition = end_position
 
     return start_position, end_position
+
+
+def is_token(node: FeatureNode):
+    return node.type in (FeatureNode.TOKEN, FeatureNode.IDENTIFIER_TOKEN)
 
 
 class Debug:
