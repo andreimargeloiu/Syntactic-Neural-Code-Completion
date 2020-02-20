@@ -2,7 +2,7 @@ Adaptation of the paper [A Syntactic Neural Model for General-Purpose Code Gener
 
 To visualise the AST of a .java file:
 ```
-./visualise_code.sh -v -- ./test_java_code/Example.java
+./sh_compile_ans_visualise.sh -v -- ./test_java_code/Example.java
 ```
 
 To compute the action sequence:

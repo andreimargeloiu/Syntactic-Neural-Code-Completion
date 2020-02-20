@@ -98,11 +98,11 @@ def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Opt
     return vocab
 
 
-def build_grammar_from_data_dir(data_dir: str) -> Grammar:
+def build_grammar_from_data_dir(data_dir: str, max_num_files: Optional[int] = None) -> Grammar:
     """
     Create Grammar
     """
-    data_files = get_data_files_from_directory(data_dir)
+    data_files = get_data_files_from_directory(data_dir, max_num_files)
     return Grammar.create_grammar(data_files)
 
 

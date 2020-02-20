@@ -54,7 +54,9 @@ class TreeNode:
 
     def __init__(self, feature_node: FeatureNode, children):
         # all nodes should have a startPosition and endPosition
-        assert feature_node.startPosition != -1 and feature_node.endPosition != -1
+        assert feature_node.startPosition != -1 or feature_node.endPosition != -1
+        if feature_node.startPosition == -1 or feature_node.endPosition == -1:
+            print(feature_node)
 
         self.feature_node = feature_node  # FeatureNode extracted from the .proto file
         self.children = children  # List of children sorted from left to right
@@ -144,7 +146,7 @@ class TreeNode:
         for edge in g.edge:
             edges_dict[edge.sourceId].append(edge)  # edges for the intermediate graph to fill the startPosition
             if edge.type in (
-                    FeatureEdge.EdgeType.AST_CHILD, FeatureEdge.EdgeType.ASSOCIATED_TOKEN):  # edges for the TreeNode
+                    FeatureEdge.EdgeType.AST_CHILD, FeatureEdge.EdgeType.RETURNS_TO):  # edges for the TreeNode
                 children_dict[edge.sourceId].append(edge.destinationId)
 
         # fill the missing startPosition and endPosition
@@ -203,12 +205,12 @@ class Grammar:
 
         return grammar
 
-    def save(self, file_name='grammar_rules.txt'):
+    def save(self, file_name='./test_outputs/grammar_rules.txt'):
         with open(file_name, 'w') as output:
             output.write(self.__repr__())
 
     @staticmethod
-    def load(file_name='grammar_rules.txt'):
+    def load(file_name='./test_outputs/grammar_rules.txt'):
         grammar = Grammar()
         with open(file_name, 'r') as f:
             for line in f:
@@ -237,13 +239,17 @@ def modify_startend_positions(node_id, nodes_dict, edges_dict):
     and endPosition with that of the subtree.
     """
     node = nodes_dict[node_id]
-    if node.startPosition != -1:
+
+    if node.startPosition != -1 and node.endPosition != -1:
         return node.startPosition, node.endPosition
 
     start_position = int(1e8)
     end_position = -1
 
     for edge in edges_dict[node_id]:
+        if edge.destinationId <= node_id: # prevent infinite loop, because the AST children have higher ID
+            continue
+
         child_start, child_end = modify_startend_positions(edge.destinationId, nodes_dict, edges_dict)
         start_position = min(start_position, child_start)
         end_position = max(end_position, child_end)

@@ -6,6 +6,7 @@ Usage:
 
 Options:
     -h --help            show this message and exit.
+    --max-num-files INT  number of files to load.
     -v --verbose         show unnecessary extra information.
     -f --is_file         the path is a file (and not a folder)
     --debug              debug mode [default: False]
@@ -19,7 +20,7 @@ from grammar import Grammar
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    grammar = build_grammar_from_data_dir(args['CORPUS_DATA_DIR'])
+    grammar = build_grammar_from_data_dir(args['CORPUS_DATA_DIR'], args.get("--max-num-files"))
 
     grammar.save()
     grammar_loaded = Grammar.load()
