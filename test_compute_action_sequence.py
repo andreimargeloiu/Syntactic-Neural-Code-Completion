@@ -7,6 +7,7 @@ Usage:
 
 Options:
     -h --help            show this message and exit.
+    --max-num-files INT  number of files to load.
     -f --is_file         the path is a file (and not a folder)
     --debug              debug mode [default: False]
 """
@@ -19,7 +20,10 @@ if __name__ == '__main__':
     args = docopt(__doc__)
 
     with open('test_outputs/action_sequence.txt', 'w') as output:
-        data_files = get_data_files_from_directory(args["CORPUS_DATA_DIR"])
+        data_files = get_data_files_from_directory(
+            args["CORPUS_DATA_DIR"],
+            max_num_files = args.get("--max-num-files")
+        )
         for file_path in data_files:
             action_sequences = load_data_file(file_path, as_string=True)
 

@@ -7,7 +7,12 @@ To visualise the AST of a .java file:
 
 To compute the action sequence:
 ```
-python test_compute_action_sequence.py ./test_java_code
+python test_compute_action_sequence.py --max-num-file=10 ../corpus-features/jsoup/
+```
+
+To test the tensorised token sequence:
+```
+python test_tensorise_sequence.py --max-num-file=10 ../corpus-features/jsoup/
 ```
 
 

@@ -1,11 +1,12 @@
 import os
 from glob import iglob
-from typing import List, Optional, Iterable
+from typing import List, Optional, Iterable, Iterator
 from collections import Counter
 
 import numpy as np
 from docopt import docopt
 from dpu_utils.mlutils import Vocabulary
+from more_itertools.more import chunked
 
 from grammar import Grammar, TreeNode
 from graph_pb2 import Graph
@@ -44,7 +45,7 @@ def get_methods_action_sequences(node: TreeNode):
     return result
 
 
-def load_data_file(file_path: str, as_string=False) -> Iterable[List[str]]:
+def load_data_file(file_path: str, as_string=True) -> Iterable[List[str]]:
     """
         Load a single data file, returning a stream of rules
         corresponding to the action sequence for METHODS.
@@ -155,3 +156,24 @@ def load_data_from_dir(
         dtype=np.int32
     )
     return data
+
+
+def get_minibatch_iterator(
+    token_seqs: np.ndarray,
+    batch_size: int,
+    is_training: bool,
+    drop_remainder: bool = True
+) -> Iterator[np.ndarray]:
+    """
+    Create an iterator for a minibatch by shuffling the token sequences.
+    """
+    indices = np.arange(token_seqs.shape[0])
+    if is_training:
+        np.random.shuffle(indices)
+
+    for minibatch_indices in chunked(indices, batch_size):
+        if len(minibatch_indices) < batch_size and drop_remainder:
+            break # Drop last, smaller batch
+
+        minibatch_seqs = token_seqs[minibatch_indices]
+        yield minibatch_seqs

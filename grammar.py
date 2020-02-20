@@ -38,7 +38,7 @@ class Rule:
         self.children = tuple(children)  # use tuple instead list because it allows to use __hash__()
 
     def __eq__(self, other):
-        return self.parent == other.parent and self.children == other.children
+        return str(self) == str(other)
 
     def __hash__(self):
         return self.parent.__hash__() ^ self.children.__hash__()
@@ -91,15 +91,15 @@ class TreeNode:
                     children_contents.append(token_names[child.feature_node.type])
                 # For Tokens, the compiler doesn't give very precise outputs
                 # Clear signs such as PLUS, EQ are in capital letters.
-                # Constants (e.g., 102, 'my_string') have the type TOKEN, while
+                # Constants (e.g., 102, 'my_string') have type TOKEN, while
                 # also things from the language 'int', 'void' are of type token
                 # However, as I can't distinguish between them, I will consider
-                # everything that is capital case to be from the language (thus
-                # store their .contents) and everything which is not capital, I
+                # everything that is capital case to be from the language (and
+                # store their .contents + ""_TOKEN) and everything which is not capital, I
                 # will store the type TOKEN
                 elif child.feature_node.type == FeatureNode.NodeType.TOKEN:
                     if all(x.isupper() for x in child.feature_node.contents):  # If it's a Java token eg: PLUS, EQ
-                        children_contents.append(child.contents)
+                        children_contents.append(child.contents + "_TOKEN")
                     else:
                         children_contents.append(token_names[child.feature_node.type])
                 else:
