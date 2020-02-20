@@ -3,6 +3,7 @@ from glob import iglob
 from typing import List, Optional, Iterable
 from collections import Counter
 
+import numpy as np
 from docopt import docopt
 from dpu_utils.mlutils import Vocabulary
 
@@ -29,9 +30,25 @@ def get_data_files_from_directory(data_dir: str, max_num_files: Optional[int] = 
     return files
 
 
+def get_methods_action_sequences(node: TreeNode):
+    """
+    Return list of nodes from subtree which are of type Method.
+    """
+    if node.contents == "METHOD":
+        return [node]
+
+    result = []
+    for child in node.children:
+        result.extend(get_methods_action_sequences(child))
+
+    return result
+
+
 def load_data_file(file_path: str, as_string=False) -> Iterable[List[str]]:
     """
-        Load a single data file, returning a stream of rules, corresponding to the action sequence.
+        Load a single data file, returning a stream of rules
+        corresponding to the action sequence for METHODS.
+        (thus don't consider tokens outside of the methods)
 
         Args:
             file_path: The path to a data file.
@@ -43,7 +60,14 @@ def load_data_file(file_path: str, as_string=False) -> Iterable[List[str]]:
         g = Graph()
         g.ParseFromString(f.read())
 
-        return TreeNode.from_graph(g).to_action_sequence(as_string=as_string)
+        root = TreeNode.from_graph(g)
+        method_nodes = get_methods_action_sequences(root)
+
+        result = []
+        for node in method_nodes:
+            result.append(node.to_action_sequence(as_string=as_string))
+
+        return result
 
 
 def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Optional[int]) -> Vocabulary:
@@ -60,9 +84,11 @@ def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Opt
     # Compute Action sequences and add them to Vocabulary
     counter = Counter()
     for file_path in data_files:  # for each file, count all tokens
-        rules = load_data_file(file_path, as_string=True)
-        for rule in rules:
-            counter[rule] += 1
+        action_sequences = load_data_file(file_path, as_string=True)
+
+        for action_sequence in action_sequences:
+            for action in action_sequence:
+                counter[action] += 1
 
     # Add the most common rules in the vocabulary
     for elem, cnt in counter.most_common(vocab_size - 2):
@@ -82,24 +108,50 @@ def build_grammar_from_data_dir(data_dir: str) -> Grammar:
 def tensorise_token_sequence(
         vocab: Vocabulary, length: int, token_seq: Iterable[str],
 ) -> List[int]:
-    def load_data_from_dir(
-            vocab: Vocabulary, length: int, data_dir: str, max_num_files: Optional[int] = None
-    ) -> np.ndarray:
-        """
-        Load and tensorise data
+    """
+    Tensorise a single example (Transform the token sequence into a sequence of IDs of fixed length)
 
-        Returns:
-            numpy int32 array of shape [None, length], containing the tensorised data
-        """
+    Args:
+        vocab: Vocabulary to use for mapping tokens to integer IDs
+        length: Length to truncate/pad sequences to.
+        token_seq: Sequence of tokens to tensorise.
 
-        # TODO
+    Returns:
+        List with length elements that are integer IDs of tokens in our vocab.
+    """
+    token_ids = [vocab.get_id_or_unk(START_SYMBOL)]
+    token_ids.extend(vocab.get_id_or_unk_multiple(token_seq, pad_to_size=length - 1))
+
+    # END_SYMBOL must be the last element in the tokenised sequence
+    end_position = min(1 + len(token_seq), length - 1)
+    token_ids[end_position] = vocab.get_id_or_unk(END_SYMBOL)
+
+    return token_ids
 
 
-if __name__ == '__main__':
-    args = docopt(__doc__)
+def load_data_from_dir(
+        vocab: Vocabulary, length: int, data_dir: str, max_num_files: Optional[int] = None
+) -> np.ndarray:
+    """
+    Load and tensorise data.
 
-    # create grammar
+    Args:
+        vocab: Vocabulary to use for mapping tokens to integer IDs
+        length: Length to truncate/pad sequences to.
+        data_dir: Directory from which to load the data.
+        max_num_files: Number of files to load at most.
 
-    # create vocab
-
-    # create training set
+    Returns:
+        numpy int32 array of shape [None, length], containing the tensorised
+        data.
+    """
+    data_files = get_data_files_from_directory(data_dir, max_num_files)
+    data = np.array(
+        list(
+            tensorise_token_sequence(vocab, length, token_seq)
+            for data_file in data_files
+            for token_seq in load_data_file(data_file)
+        ),
+        dtype=np.int32
+    )
+    return data

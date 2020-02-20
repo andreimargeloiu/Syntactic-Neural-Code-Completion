@@ -21,9 +21,11 @@ if __name__ == '__main__':
     with open('test_outputs/action_sequence.txt', 'w') as output:
         data_files = get_data_files_from_directory(args["CORPUS_DATA_DIR"])
         for file_path in data_files:
-            actions = load_data_file(file_path, as_string=True)
+            action_sequences = load_data_file(file_path, as_string=True)
 
             output.write(f"----{file_path}\n")
-            for action in actions:
-                output.write(action)
-                output.write('\n')
+            for action_sequence in action_sequences:
+                for action in action_sequence:
+                    output.write(action)
+                    output.write('\n')
+                output.write("\n")
