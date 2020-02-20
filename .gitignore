@@ -336,4 +336,4 @@ ASALocalRun/
 dot/target
 proto/target/*
 extractor/target/*
-grammar_rules.txt
+test_outputs/*

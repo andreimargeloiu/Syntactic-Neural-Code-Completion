@@ -5,14 +5,10 @@ To visualise the AST of a .java file:
 ./visualise_code.sh -v -- ./test_java_code/Example.java
 ```
 
-To extract the grammar from a file/folder:
+To compute the action sequence:
 ```
-python grammar.py -f ./test_java_code/Example.java.proto
+python test_compute_action_sequence.py ./test_java_code
 ```
-
-
-TODO:
-- Handle rules where RHS has non-deterministic length e.g. STATEMENTS -> EXPRESSION_STATEMENT, EXPRESSION_STATEMENT
 
 
 # Wiki of internals

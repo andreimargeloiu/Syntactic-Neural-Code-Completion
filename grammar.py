@@ -1,19 +1,8 @@
-"""Extract and save grammar
-Usage:
-    grammar.py [options] CORPUS_DATA_DIR
-
-*_DATA_DIR are directories filled with files that we use as data.
-
-Options:
-    -h --help            show this message and exit.
-    -v --verbose         show unnecessary extra information.
-    -f --is_file         the path is a file (and not a folder)
-    --node_id=<n>       id of parent node (for debug) [default: -1]
-    --debug              debug mode [default: False]
-"""
 import math
 import os
 import re
+from collections import Iterable
+from typing import List
 
 from docopt import docopt
 from graph_pb2 import Graph, FeatureEdge, FeatureNode
@@ -87,8 +76,8 @@ class TreeNode:
         Return the rule of this node
         """
         # If node is leaf or preterminal, t
-        if self.is_leaf or len(self.children) == 0:
-            return []
+        if self.is_leaf:
+            return None
         else:
             # compute the
             children_contents = []
@@ -109,43 +98,71 @@ class TreeNode:
                 # store their .contents) and everything which is not capital, I
                 # will store the type TOKEN
                 elif child.feature_node.type == FeatureNode.NodeType.TOKEN:
-                    if all(x.isupper() for x in child.feature_node.contents): # If it's a Java token eg: PLUS, EQ
+                    if all(x.isupper() for x in child.feature_node.contents):  # If it's a Java token eg: PLUS, EQ
                         children_contents.append(child.contents)
                     else:
                         children_contents.append(token_names[child.feature_node.type])
                 else:
                     children_contents.append(child.contents)
 
-            return [Rule(self.contents, children_contents)]
+            return Rule(self.contents, children_contents)
 
-    def compute_rules(self) -> [Rule]:
-        """
-        :return: list of rules from this subtree
-        """
-        # Rule of this node
-        rules = self.get_node_rule()
-
-        # Rules of children
-        for child in self.children:
-            rules.extend(child.compute_rules())
-
-        return rules
-
-    def to_action_sequence(self):
+    def to_action_sequence(self, as_string=False) -> List[Rule]:
         """
         Decompose each method subtree into a sequence of actions.
         """
-        methods_actions = []
+        if self.is_leaf:
+            return []
 
-        return methods_actions
+        actions = [self.get_node_rule()]
+
+        # Expansion of rules of children
+        for child in self.children:
+            actions.extend(child.to_action_sequence())
+
+        if as_string:
+            actions = list(map(str, actions))
+
+        return actions
 
     @staticmethod
-    def from_graph(node_id: int, nodes_dict: dict, children_dict: dict):
+    def from_graph(g: Graph):
         """
-        Create this subtree.
+        Convert a Graph into a TreeNode.
+
+        Augment the Graph with startPosition/endPosition.
+        """
+        # create dictionary with notes and edges
+        nodes_dict = dict()
+        edges_dict = dict()
+        children_dict = dict()
+        for node in g.node:
+            nodes_dict[node.id] = node
+            edges_dict[node.id] = []
+            children_dict[node.id] = []
+
+        for edge in g.edge:
+            edges_dict[edge.sourceId].append(edge)  # edges for the intermediate graph to fill the startPosition
+            if edge.type in (
+                    FeatureEdge.EdgeType.AST_CHILD, FeatureEdge.EdgeType.ASSOCIATED_TOKEN):  # edges for the TreeNode
+                children_dict[edge.sourceId].append(edge.destinationId)
+
+        # fill the missing startPosition and endPosition
+        for node in g.node:
+            modify_startend_positions(node.id, nodes_dict, edges_dict)
+
+        # sort the list of children based on the starting position.
+        for node in g.node:
+            children_dict[node.id].sort(key=lambda x: (nodes_dict[x].startPosition, nodes_dict[x].endPosition))
+
+        return TreeNode.from_graph_dictionary(0, nodes_dict, children_dict)
+
+    @staticmethod
+    def from_graph_dictionary(node_id: int, nodes_dict: dict, children_dict: dict):
+        """
+        Convert the augmented dictionaries of a Graph into a TreeNode
         """
         node = nodes_dict[node_id]
-        # print(f"node_id: {node_id} with children {children_dict[node_id]}")
 
         # corner case: leaf (token)
         if len(children_dict[node_id]) == 0:
@@ -154,7 +171,7 @@ class TreeNode:
         # get TreeNodes for children
         children = []
         for child_id in children_dict[node_id]:
-            children.append(TreeNode.from_graph(child_id, nodes_dict, children_dict))
+            children.append(TreeNode.from_graph_dictionary(child_id, nodes_dict, children_dict))
 
         return TreeNode(node, children)
 
@@ -167,40 +184,21 @@ class Grammar:
     def __init__(self):
         self.rules = set()
 
-    def add_rules(self, path):
-        """
-        Compute the rules from a file and add them to this Grammar
-        """
-        with open(path, 'rb') as f:
-            g = Graph()
-            g.ParseFromString(f.read())
-
-            root = create_tree(g)
-            for rule in root.compute_rules():
-                grammar.rules.add(rule)
-
     @staticmethod
-    def create_grammar(path, is_file=True):
+    def create_grammar(file_paths):
         """
-        Create grammar from some given .proto files
+        Create grammar from folder
+
+        :param: file_paths = paths to all .proto file to compute grammar
         """
-        # TODO rules can have non-deterministic length on the RHS
-
-        if not os.path.exists(path):
-            raise Exception("File to create grammar does not exist")
-
         grammar = Grammar()
-
-        if is_file:
-            assert path.endswith('.proto')
-
+        for path in file_paths:
             with open(path, 'rb') as f:
                 g = Graph()
                 g.ParseFromString(f.read())
 
-                root = create_tree(g)
-                for rule in root.compute_rules():
-                    print(rule)
+                root = TreeNode.from_graph(g)
+                for rule in root.to_action_sequence():
                     grammar.rules.add(rule)
 
         return grammar
@@ -233,36 +231,6 @@ class Grammar:
         return '\n'.join(str(rule) for rule in rules_strings)
 
 
-# Auxiliary methods
-def create_tree(g: Graph):
-    """
-    Converts a Graph into a TreeNode
-    """
-    # create dictionary with notes and edges
-    nodes_dict = dict()
-    edges_dict = dict()
-    children_dict = dict()
-    for node in g.node:
-        nodes_dict[node.id] = node
-        edges_dict[node.id] = []
-        children_dict[node.id] = []
-
-    for edge in g.edge:
-        edges_dict[edge.sourceId].append(edge)  # edges for the intermediate graph to fill the startPosition
-        if edge.type in (FeatureEdge.EdgeType.AST_CHILD, FeatureEdge.EdgeType.ASSOCIATED_TOKEN):  # edges for the TreeNode
-            children_dict[edge.sourceId].append(edge.destinationId)
-
-    # fill the missing startPosition and endPosition
-    for node in g.node:
-        modify_startend_positions(node.id, nodes_dict, edges_dict)
-
-    # sort the list of children based on the starting position.
-    for node in g.node:
-        children_dict[node.id].sort(key=lambda x: (nodes_dict[x].startPosition, nodes_dict[x].endPosition))
-
-    return TreeNode.from_graph(0, nodes_dict, children_dict)
-
-
 def modify_startend_positions(node_id, nodes_dict, edges_dict):
     """
     Recursively iterates the tree and updates the startPosition
@@ -272,7 +240,7 @@ def modify_startend_positions(node_id, nodes_dict, edges_dict):
     if node.startPosition != -1:
         return node.startPosition, node.endPosition
 
-    start_position = (int)(1e8)
+    start_position = int(1e8)
     end_position = -1
 
     for edge in edges_dict[node_id]:
@@ -285,35 +253,3 @@ def modify_startend_positions(node_id, nodes_dict, edges_dict):
     nodes_dict[node_id].endPosition = end_position
 
     return start_position, end_position
-
-
-def is_token(node: FeatureNode):
-    return node.type in (FeatureNode.TOKEN, FeatureNode.IDENTIFIER_TOKEN)
-
-
-class Debug:
-    @staticmethod
-    def print_all_edge(path, node_id):
-        """
-        Print all edges starting from node `node_id`
-        """
-        with open(path, 'rb') as f:
-            g = Graph()
-            g.ParseFromString(f.read())
-
-            for edge in g.edge:
-                if edge.sourceId == int(node_id):
-                    print(edge)
-
-
-if __name__ == '__main__':
-    args = docopt(__doc__)
-
-    # Debug.print_all_edge(args['CORPUS_DATA_DIR'], args['--node_id'])
-
-    # Assert saving and loading a grammar works
-    grammar = Grammar.create_grammar(args['CORPUS_DATA_DIR'], args['--is_file'])
-    grammar.save()
-    grammar_loaded = Grammar.load()
-    assert str(grammar) == str(grammar_loaded)
-    print("Grammar successfully saved.")
