@@ -18,6 +18,7 @@ Options:
 """
 import json
 import os
+import pathlib
 import time
 import logging
 from typing import Dict, Any
@@ -32,7 +33,7 @@ from model import SyntacticModel
 logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M:%S',
-                        filename=os.path.join(os.getcwd(), 'logs/training.log'),
+                        filename=os.path.join(pathlib.Path(__file__).parent.absolute(), 'logs/training.log'),
                         filemode='a')
 
 # define a handler which writes INFO messages or higher to the console
@@ -166,11 +167,6 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-
-    print(args["--log-path"])
-
-    # import pathlib
-    # print(pathlib.Path(__file__).parent.absolute())
 
     logging.info("\n---Started Training---\n")
 
