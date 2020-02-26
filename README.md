@@ -14,7 +14,7 @@ python ./test/test_compute_grammar --max-num-file=10 ../../corpus-features/jsoup
 
 To train the model:
 ```
-python train.py trained_models ../corpus-features/jsoup/{,}
+python train.py --log-path="./logs/training.log" --save-dir="./trained_models" --train-data-dir="../corpus-features/jsoup" --valid-data-dir="../corpus-features/jsoup/"
 ```
 
 # Wiki of internals
