@@ -9,7 +9,6 @@ Options:
     --max-num-epochs EPOCHS         The maximum number of epochs to run [default: 100]
     --patience NUM                  Number of epochs to wait for the model improvement before stopping (for early stopping) [default: 5]
     --max-num-files INT             Number of files to load.
-    --log-path=NAME                 The path to the log file[default: ./logs/training.log]
     --save-dir=NAME                 Save the models path
     --train-data-dir=NAME           Training directory path
     --valid-data-dir=NAME           Validation directory path
@@ -30,12 +29,11 @@ from dpu_utils.utils import run_and_debug
 from dataset import build_vocab_from_data_dir, build_grammar_from_data_dir, get_minibatch_iterator, load_data_from_dir
 from model import SyntacticModel
 
-# setup up logging to a file
 logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M:%S',
-                    filename='./logs/training.log',
-                    filemode='a')
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt='%m-%d %H:%M:%S',
+                        filename=os.path.join(os.getcwd(), 'logs/training.log'),
+                        filemode='a')
 
 # define a handler which writes INFO messages or higher to the console
 console = logging.StreamHandler()
@@ -47,13 +45,13 @@ logging.getLogger('').addHandler(console)
 
 
 def train(
-    model: SyntacticModel,
-    train_data: np.ndarray,
-    valid_data: np.ndarray,
-    batch_size: int,
-    max_epochs: int,
-    patience: int,
-    save_file: str,
+        model: SyntacticModel,
+        train_data: np.ndarray,
+        valid_data: np.ndarray,
+        batch_size: int,
+        max_epochs: int,
+        patience: int,
+        save_file: str,
 ):
     best_valid_loss, _ = model.run_one_epoch(
         get_minibatch_iterator(valid_data, batch_size, is_training=False),
@@ -165,22 +163,15 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
     else:
         return "RNNModel-%s" % (time.strftime("%Y-%m-%d-%H-%M-%S"))
 
+
 if __name__ == "__main__":
     args = docopt(__doc__)
 
-    print(args)
-    print(args['--train-data-dir'])
+    print(args["--log-path"])
 
     # import pathlib
     # print(pathlib.Path(__file__).parent.absolute())
 
-
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt='%m-%d %H:%M:%S',
-                        filename=args["--log-path"],
-                        filemode='a')
-
     logging.info("\n---Started Training---\n")
-    
+
     run_and_debug(lambda: run(args), args["--debug"])
