@@ -11,6 +11,10 @@ Options:
 from docopt import docopt
 from dpu_utils.utils import run_and_debug
 
+import os, sys
+# Add parent directory dynamically
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+
 from dataset import build_vocab_from_data_dir, load_data_from_dir
 
 

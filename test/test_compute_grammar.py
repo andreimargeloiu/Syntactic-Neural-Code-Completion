@@ -6,13 +6,17 @@ Usage:
 
 Options:
     -h --help            show this message and exit.
-    --max-num-files INT  number of files to load.
+    --max-num-files INT  number of files to load. [default:100]
     -v --verbose         show unnecessary extra information.
     -f --is_file         the path is a file (and not a folder)
     --debug              debug mode [default: False]
 """
 
 from docopt import docopt
+
+import os, sys
+# Add parent directory dynamically
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from dataset import build_grammar_from_data_dir
 from grammar import Grammar

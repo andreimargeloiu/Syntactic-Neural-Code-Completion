@@ -11,16 +11,19 @@ Options:
     -f --is_file         the path is a file (and not a folder)
     --debug              debug mode [default: False]
 """
-import sys
-
 from docopt import docopt
+
+import os, sys
+# Add parent directory dynamically
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from dataset import load_data_file, get_data_files_from_directory
 
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    with open('test_outputs/action_sequence.txt', 'w') as output:
+    # hte path is relative to where you called the file from
+    with open('./test_outputs/action_sequence.txt', 'w') as output:
         data_files = get_data_files_from_directory(
             args["CORPUS_DATA_DIR"],
             max_num_files = args.get("--max-num-files")

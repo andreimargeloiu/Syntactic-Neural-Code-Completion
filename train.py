@@ -16,6 +16,7 @@ Options:
 import json
 import os
 import time
+import logging
 from typing import Dict, Any
 
 import numpy as np
@@ -24,6 +25,23 @@ from dpu_utils.utils import run_and_debug
 
 from dataset import build_vocab_from_data_dir, build_grammar_from_data_dir, get_minibatch_iterator, load_data_from_dir
 from model import SyntacticModel
+
+import logging
+
+# setup up logging to a file
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M:%S',
+                    filename='./logs/training.log',
+                    filemode='a')
+
+# define a handler which writes INFO messages or higher to the console
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s'))
+
+# add handler to the root logger
+logging.getLogger('').addHandler(console)
 
 
 def train(
@@ -39,39 +57,39 @@ def train(
         get_minibatch_iterator(valid_data, batch_size, is_training=False),
         training=False,
     )
-    print(f"Initial valid loss: {best_valid_loss:.3f}.")
+    logging.info(f"Initial valid loss: {best_valid_loss:.3f}.")
     model.save(save_file)
     best_valid_epoch = 0
     train_time_start = time.time()
     for epoch in range(1, max_epochs + 1):
-        print(f"== Epoch {epoch}")
+        logging.info(f"== Epoch {epoch}")
         train_loss, train_acc = model.run_one_epoch(
             get_minibatch_iterator(train_data, batch_size, is_training=True),
             training=True,
         )
-        print(f" Train:  Loss {train_loss:.4f}, Acc {train_acc:.3f}")
+        logging.info(f" Train:  Loss {train_loss:.4f}, Acc {train_acc:.3f}")
         valid_loss, valid_acc = model.run_one_epoch(
             get_minibatch_iterator(valid_data, batch_size, is_training=False),
             training=False,
         )
-        print(f" Valid:  Loss {valid_loss:.4f}, Acc {valid_acc:.3f}")
+        logging.info(f" Valid:  Loss {valid_loss:.4f}, Acc {valid_acc:.3f}")
 
         # Save if good enough.
         if valid_loss < best_valid_loss:
-            print(
+            logging.info(
                 f"  (Best epoch so far, loss decreased {valid_loss:.4f} from {best_valid_loss:.4f})",
             )
             model.save(save_file)
-            print(f"  (Saved model to {save_file})")
+            logging.info(f"  (Saved model to {save_file})")
             best_valid_loss = valid_loss
             best_valid_epoch = epoch
         elif epoch - best_valid_epoch >= patience:
             total_time = time.time() - train_time_start
-            print(
+            logging.info(
                 f"Stopping training after {patience} epochs without "
                 f"improvement on validation loss.",
             )
-            print(
+            logging.info(
                 f"Training took {total_time:.0f}s. Best validation loss: {best_valid_loss:.4f}",
             )
             break
@@ -95,32 +113,31 @@ def run(arguments) -> None:
         save_model_dir, f"{hyperparameters['run_id']}_best_model.bin"
     )
 
-    print("Loading data ...")
+    logging.info("Loading data ...")
     vocab = build_vocab_from_data_dir(
         data_dir=args["TRAIN_DATA_DIR"],
         vocab_size=hyperparameters["max_vocab_size"],
         max_num_files=max_num_files,
     )
-    print(f"  Built vocabulary of {len(vocab)} entries.")
+    logging.info(f"  Built vocabulary of {len(vocab)} entries.")
     train_data = load_data_from_dir(
         vocab,
         length=hyperparameters["max_seq_length"],
         data_dir=args["TRAIN_DATA_DIR"],
         max_num_files=max_num_files,
     )
-    print(f"  Loaded {train_data.shape[0]} training samples from {args['TRAIN_DATA_DIR']}.")
+    logging.info(f"  Loaded {train_data.shape[0]} training samples from {args['TRAIN_DATA_DIR']}.")
     valid_data = load_data_from_dir(
         vocab,
         length=hyperparameters["max_seq_length"],
         data_dir=args["VALID_DATA_DIR"],
         max_num_files=max_num_files,
     )
-    print(f"  Loaded {valid_data.shape[0]} validation samples from {args['VALID_DATA_DIR']}.")
+    logging.info(f"  Loaded {valid_data.shape[0]} validation samples from {args['VALID_DATA_DIR']}.")
     model = SyntacticModel(hyperparameters, vocab)
     model.build(([None, hyperparameters["max_seq_length"]]))
-    print(
-        f"Constructed model, using the following hyperparameters: {json.dumps(hyperparameters)}"
-    )
+    logging.info("Constructed model, using the following hyperparameters:")
+    logging.info(json.dumps(hyperparameters))
 
     train(
         model,
@@ -146,7 +163,8 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
     else:
         return "RNNModel-%s" % (time.strftime("%Y-%m-%d-%H-%M-%S"))
 
-ç
 if __name__ == "__main__":
     args = docopt(__doc__)
+    logging.info("\n---Started Training---\n")
+    
     run_and_debug(lambda: run(args), args["--debug"])

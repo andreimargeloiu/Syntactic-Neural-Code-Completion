@@ -2,19 +2,20 @@ Adaptation of the paper [A Syntactic Neural Model for General-Purpose Code Gener
 
 To visualise the AST of a .java file:
 ```
-./sh_compile_ans_visualise.sh -v -- ./test_java_code/Example.java
+.scripts/sh_compile_ans_visualise.sh -v -- ../test/Example.java
 ```
 
-To compute the action sequence:
+Tests/Debug:
 ```
-python test_compute_action_sequence.py --max-num-file=10 ../corpus-features/jsoup/
-```
-
-To test the tensorised token sequence:
-```
-python test_tensorise_sequence.py --max-num-file=10 ../corpus-features/jsoup/
+python ./test/test_compute_action_sequence.py --max-num-file=10 ../../corpus-features/jsoup/
+python ./test/test_tensorise_sequence.py --max-num-file=10 ../../corpus-features/jsoup/
+python ./test/test_compute_grammar --max-num-file=10 ../../corpus-features/jsoup/
 ```
 
+To train the model:
+```
+python train.py trained_models ../corpus-features/jsoup/{,}
+```
 
 # Wiki of internals
 - A Node has two important fields: .type(Type of node in our own AST) and .contents(Java Symbol Type)  
