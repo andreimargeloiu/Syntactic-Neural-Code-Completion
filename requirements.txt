@@ -3,3 +3,4 @@ numpy
 more_itertools
 docopt
 sentencepiece
+gitpython

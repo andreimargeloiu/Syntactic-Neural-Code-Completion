@@ -12,10 +12,23 @@ python ./test/test_tensorise_sequence.py --max-num-file=10 ../../corpus-features
 python ./test/test_compute_grammar --max-num-file=10 ../../corpus-features/jsoup/
 ```
 
-To train the model:
+Train:
 ```
-python train.py --log-path="./logs/training.log" --save-dir="./trained_models" --train-data-dir="../corpus-features/jsoup" --valid-data-dir="../corpus-features/jsoup/"
+python train.py --save-dir="./trained_models"\
+                --train-data-dir="../corpus-features/jsoup"\
+                --valid-data-dir="../corpus-features/jsoup/"\
+                --log-file='./logs/training.log'\
+                --max-num-epochs 100\
+                --patience 5
 ```
+
+Evaluate:
+```
+python evaluate.py --trained-model="trained_models/RNNModel-2020-02-27-07-48-44_best_model.bin"\
+                   --test-dir="../corpus-features/jsoup/"
+```
+
+
 
 # Wiki of internals
 - A Node has two important fields: .type(Type of node in our own AST) and .contents(Java Symbol Type)  

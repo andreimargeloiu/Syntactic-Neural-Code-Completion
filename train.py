@@ -19,7 +19,7 @@ Options:
 """
 import json
 import os
-import pathlib
+import git
 import time
 import logging
 from typing import Dict, Any
@@ -154,9 +154,6 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-
-    print(args)
-
     # Logging configuration
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -171,7 +168,11 @@ if __name__ == "__main__":
     # add handler to the root logger
     logging.getLogger('').addHandler(console)
 
+    # get current commit
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha
 
-    logging.info("\n---Started Training---\n")
+    logging.info(f"\n---Started Training from commit {sha}---\n")
+    print(args)
 
     run_and_debug(lambda: run(args), args["--debug"])
