@@ -9,6 +9,7 @@ Options:
     --max-num-epochs EPOCHS         The maximum number of epochs to run [default: 100]
     --patience NUM                  Number of epochs to wait for the model improvement before stopping (for early stopping) [default: 5]
     --max-num-files INT             Number of files to load.
+    --log-file NAME
     --save-dir=NAME                 Save the models path
     --train-data-dir=NAME           Training directory path
     --valid-data-dir=NAME           Validation directory path
@@ -29,20 +30,6 @@ from dpu_utils.utils import run_and_debug
 
 from dataset import build_vocab_from_data_dir, build_grammar_from_data_dir, get_minibatch_iterator, load_data_from_dir
 from model import SyntacticModel
-
-logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt='%m-%d %H:%M:%S',
-                        filename=os.path.join(pathlib.Path(__file__).parent.absolute(), 'logs/training.log'),
-                        filemode='a')
-
-# define a handler which writes INFO messages or higher to the console
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-console.setFormatter(logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s'))
-
-# add handler to the root logger
-logging.getLogger('').addHandler(console)
 
 
 def train(
@@ -167,6 +154,21 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     args = docopt(__doc__)
+
+    # Logging configuration
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt='%m-%d %H:%M:%S',
+                        filename=args['--log-file'],
+                        filemode='a')
+    # define a handler which writes INFO messages or higher to the console
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    console.setFormatter(logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s'))
+
+    # add handler to the root logger
+    logging.getLogger('').addHandler(console)
+
 
     logging.info("\n---Started Training---\n")
 
