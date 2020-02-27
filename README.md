@@ -9,7 +9,8 @@ Tests/Debug:
 ```
 python ./test/test_compute_action_sequence.py --max-num-file=10 ../../corpus-features/jsoup/
 python ./test/test_tensorise_sequence.py --max-num-file=10 ../../corpus-features/jsoup/
-python ./test/test_compute_grammar --max-num-file=10 ../../corpus-features/jsoup/
+python ./test/test_compute_grammar.py --max-num-file=10 ../../corpus-features/jsoup/
+python ./test/test_compute_vocabulary.py --max-num-file=10 ./test
 ```
 
 Train:

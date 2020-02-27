@@ -1,6 +1,6 @@
 import os
 from glob import iglob
-from typing import List, Optional, Iterable, Iterator
+from typing import List, Optional, Iterable, Iterator, Tuple
 from collections import Counter
 
 import numpy as np
@@ -73,31 +73,41 @@ def load_data_file(file_path: str, as_string=True) -> (Iterable[List[str]], Iter
         return actions_list, nodes_list
 
 
-def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Optional[int]) -> Vocabulary:
+def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Optional[int]) \
+        -> Tuple[Vocabulary, Vocabulary]:
     """
-    Build the Vocabulary for a dataset
+    Build an Action Vocabulary and a Node Vocabulary
     """
     data_files = get_data_files_from_directory(data_dir, max_num_files)
 
     # Create vocabulary with START_SYMBOL and END_SYMBOL
-    vocab = Vocabulary(add_unk=True, add_pad=True)
-    vocab.add_or_get_id(START_SYMBOL)
-    vocab.add_or_get_id(END_SYMBOL)
+    vocab_nodes = Vocabulary(add_unk=True, add_pad=True)
+    vocab_nodes.add_or_get_id(START_SYMBOL)
+    vocab_nodes.add_or_get_id(END_SYMBOL)
 
-    # Compute Action sequences and add them to Vocabulary
-    counter = Counter()
+    # TODO the actions vocabulary should NOT contain unk and padding
+    vocab_actions = Vocabulary(add_unk=True, add_pad=True)
+    vocab_actions.add_or_get_id(START_SYMBOL)
+    vocab_actions.add_or_get_id(END_SYMBOL)
+
+    # Count actions and nodes
+    counter_nodes, counter_actions = Counter(), Counter()
     for file_path in data_files:  # for each file, count all tokens
         action_lists, node_lists = load_data_file(file_path, as_string=True)
 
-        for action_sequence in action_lists:
-            for action in action_sequence:
-                counter[action] += 1
+        for action_sequence, node_sequence in zip(action_lists, node_lists):
+            for action, node in zip(action_sequence, node_sequence):
+                counter_nodes[node] += 1
+                counter_actions[action] += 1
 
     # Add the most common rules in the vocabulary
-    for elem, cnt in counter.most_common(vocab_size - 2):
-        vocab.add_or_get_id(elem)
+    for node, _ in counter_nodes.most_common(vocab_size - 2):
+        vocab_nodes.add_or_get_id(node)
 
-    return vocab
+    for action, _ in counter_actions.most_common(vocab_size):
+        vocab_actions.add_or_get_id(action)
+
+    return vocab_nodes, vocab_actions
 
 
 def build_grammar_from_data_dir(data_dir: str, max_num_files: Optional[int] = None) -> Grammar:
