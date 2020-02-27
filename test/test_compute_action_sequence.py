@@ -30,11 +30,14 @@ if __name__ == '__main__':
         )
         for i, file_path in enumerate(data_files):
             print(f"{i}:  Processing {file_path}")
-            action_sequences = load_data_file(file_path, as_string=True)
+            action_lists, node_lists = load_data_file(file_path, as_string=True)
 
             output.write(f"----{file_path}\n")
-            for action_sequence in action_sequences:
-                for action in action_sequence:
-                    output.write(action)
+            for i in range(len(action_lists)):
+                for j in range(len(action_lists[i])):
+                    output.write("%-20s  |  " % node_lists[i][j])
+                    output.write(action_lists[i][j])
                     output.write('\n')
+
+
                 output.write("\n")

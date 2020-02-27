@@ -45,17 +45,17 @@ def get_methods_action_sequences(node: TreeNode):
     return result
 
 
-def load_data_file(file_path: str, as_string=True) -> Iterable[List[str]]:
+def load_data_file(file_path: str, as_string=True) -> (Iterable[List[str]], Iterable[List[str]]):
     """
-        Load a single data file, returning a stream of rules
-        corresponding to the action sequence for METHODS.
+        Returning a lists of sequences of rules corresponding to the METHODS in a file.
         (thus don't consider tokens outside of the methods)
 
         Args:
             file_path: The path to a data file.
 
-        Returns:
-            Iterable of lists of strings, each a list of tokens observed in the data.
+        Returns tupel of:
+            1. Iterable of lists of strings, each list containing the ACTION RULES for the subtrees.
+            2. Iterable of lists of strings, each list containing the NODES expanded for the subtrees.
     """
     with open(file_path, "rb") as f:
         g = Graph()
@@ -64,11 +64,13 @@ def load_data_file(file_path: str, as_string=True) -> Iterable[List[str]]:
         root = TreeNode.from_graph(g)
         method_nodes = get_methods_action_sequences(root)
 
-        result = []
+        actions_list, nodes_list = [], []
         for node in method_nodes:
-            result.append(node.to_action_sequence(as_string=as_string))
+            actions, nodes = node.to_action_sequence_and_nodes(as_string=as_string)
+            actions_list.append(actions)
+            nodes_list.append(nodes)
 
-        return result
+        return actions_list, nodes_list
 
 
 def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Optional[int]) -> Vocabulary:
@@ -85,9 +87,9 @@ def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Opt
     # Compute Action sequences and add them to Vocabulary
     counter = Counter()
     for file_path in data_files:  # for each file, count all tokens
-        action_sequences = load_data_file(file_path, as_string=True)
+        action_lists, node_lists = load_data_file(file_path, as_string=True)
 
-        for action_sequence in action_sequences:
+        for action_sequence in action_lists:
             for action in action_sequence:
                 counter[action] += 1
 
@@ -147,15 +149,15 @@ def load_data_from_dir(
         data.
     """
     data_files = get_data_files_from_directory(data_dir, max_num_files)
-    data = np.array(
-        list(
-            tensorise_token_sequence(vocab, length, token_seq)
-            for data_file in data_files
-            for token_seq in load_data_file(data_file)
-        ),
-        dtype=np.int32
-    )
-    return data
+
+    tensorised_result = []
+    for data_file in data_files:
+        actions_seq, nodes_seq = load_data_file(data_file)
+
+        for action_seq, node_seq in zip(actions_seq, nodes_seq):
+            tensorised_result.append(tensorise_token_sequence(vocab, length, action_seq))
+
+    return np.array(tensorised_result, dtype=np.int32)
 
 
 def get_minibatch_iterator(

@@ -20,7 +20,8 @@ python train.py --save-dir="./trained_models"\
                 --log-file='./logs/training.log'\
                 --tensorboard-logs-path="./logs_tensorboard"\
                 --max-num-epochs 100\
-                --patience 5
+                --patience 5\
+                --max-num-files 10
 ```
 
 Evaluate:

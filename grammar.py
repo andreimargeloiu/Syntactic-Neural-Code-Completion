@@ -111,7 +111,7 @@ class TreeNode:
 
     def to_action_sequence(self, as_string=False) -> List[Rule]:
         """
-        Decompose each method subtree into a sequence of actions.
+        Decompose the subtree into a sequence of actions.
         """
         if self.is_leaf:
             return []
@@ -126,6 +126,22 @@ class TreeNode:
             actions = list(map(str, actions))
 
         return actions
+
+    def to_action_sequence_and_nodes(self, as_string=False):
+        """
+        Returns tuple of
+           1. Sequence of actions for this subtree
+           2. Sequence of nodes for this subtree
+        """
+
+        actions = self.to_action_sequence(as_string=False)  # get the sequence of actions as Rule (not string)
+        nodes = list(map(lambda x: x.parent, actions))      # get list of the split nodes of the action sequence
+
+        if as_string:
+            actions = list(map(str, actions))
+            nodes = list(map(str, nodes))
+
+        return actions, nodes
 
     @staticmethod
     def from_graph(g: Graph):
