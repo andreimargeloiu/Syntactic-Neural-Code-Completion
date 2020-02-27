@@ -155,6 +155,8 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
 if __name__ == "__main__":
     args = docopt(__doc__)
 
+    print(args)
+
     # Logging configuration
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
