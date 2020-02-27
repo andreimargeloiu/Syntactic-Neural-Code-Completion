@@ -18,6 +18,7 @@ python train.py --save-dir="./trained_models"\
                 --train-data-dir="../corpus-features/jsoup"\
                 --valid-data-dir="../corpus-features/jsoup/"\
                 --log-file='./logs/training.log'\
+                --tensorboard-logs-path="./logs_tensorboard"\
                 --max-num-epochs 100\
                 --patience 5
 ```

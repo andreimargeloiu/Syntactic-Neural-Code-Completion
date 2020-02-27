@@ -9,6 +9,7 @@ Options:
     --max-num-epochs EPOCHS         The maximum number of epochs to run [default: 100]
     --patience NUM                  Number of epochs to wait for the model improvement before stopping (for early stopping) [default: 5]
     --max-num-files INT             Number of files to load.
+    --tensorboard-logs-path=NAME    Path to tensorboard logs
     --log-file=NAME
     --save-dir=NAME                 Save the models path
     --train-data-dir=NAME           Training directory path
@@ -19,10 +20,13 @@ Options:
 """
 import json
 import os
+from datetime import datetime
+
 import git
 import time
 import logging
 from typing import Dict, Any
+import tensorflow.compat.v2 as tf
 
 import numpy as np
 from docopt import docopt
@@ -49,6 +53,12 @@ def train(
     model.save(save_file)
     best_valid_epoch = 0
     train_time_start = time.time()
+
+    # TensorBoard
+    log_dir = args['--tensorboard-logs-path'] + "/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    writer_train = tf.summary.create_file_writer(log_dir + "/train")
+    writer_valid = tf.summary.create_file_writer(log_dir + "/valid")
+
     for epoch in range(1, max_epochs + 1):
         logging.info(f"== Epoch {epoch}")
         train_loss, train_acc = model.run_one_epoch(
@@ -61,6 +71,15 @@ def train(
             training=False,
         )
         logging.info(f" Valid:  Loss {valid_loss:.4f}, Acc {valid_acc:.3f}")
+
+        # Write to TensorBoard
+        with writer_train.as_default():
+            tf.summary.scalar('loss', train_loss, step=epoch)
+            tf.summary.scalar('accuracy', train_acc, step=epoch)
+
+        with writer_valid.as_default():
+            tf.summary.scalar('loss', valid_loss, step=epoch)
+            tf.summary.scalar('accuracy', valid_acc, step=epoch)
 
         # Save if good enough.
         if valid_loss < best_valid_loss:

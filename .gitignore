@@ -337,3 +337,5 @@ dot/target
 proto/target/*
 extractor/target/*
 test_outputs/*
+
+trained_models/
