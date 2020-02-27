@@ -9,7 +9,7 @@ Options:
     --max-num-epochs EPOCHS         The maximum number of epochs to run [default: 100]
     --patience NUM                  Number of epochs to wait for the model improvement before stopping (for early stopping) [default: 5]
     --max-num-files INT             Number of files to load.
-    --log-file NAME
+    --log-file=NAME
     --save-dir=NAME                 Save the models path
     --train-data-dir=NAME           Training directory path
     --valid-data-dir=NAME           Validation directory path
