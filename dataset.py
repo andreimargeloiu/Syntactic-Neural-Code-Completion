@@ -143,13 +143,14 @@ def tensorise_token_sequence(
 
 
 def load_data_from_dir(
-        vocab: Vocabulary, length: int, data_dir: str, max_num_files: Optional[int] = None
+        vocab_node: Vocabulary, vocab_action: Vocabulary,
+        length: int, data_dir: str, max_num_files: Optional[int] = None
 ) -> np.ndarray:
     """
     Load and tensorise data.
 
     Args:
-        vocab: Vocabulary to use for mapping tokens to integer IDs
+        vocab_action: Vocabulary to use for mapping tokens to integer IDs
         length: Length to truncate/pad sequences to.
         data_dir: Directory from which to load the data.
         max_num_files: Number of files to load at most.
@@ -165,7 +166,7 @@ def load_data_from_dir(
         actions_seq, nodes_seq = load_data_file(data_file)
 
         for action_seq, node_seq in zip(actions_seq, nodes_seq):
-            tensorised_result.append(tensorise_token_sequence(vocab, length, action_seq))
+            tensorised_result.append(tensorise_token_sequence(vocab_action, length, action_seq))
 
     return np.array(tensorised_result, dtype=np.int32)
 

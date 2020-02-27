@@ -27,13 +27,14 @@ def find_first(item, vector):
 
 
 def run(arguments) -> None:
-    vocab = build_vocab_from_data_dir(
+    vocab_nodes, vocab_actions = build_vocab_from_data_dir(
         arguments["DATA_DIR"],
         vocab_size=500,
         max_num_files=arguments.get("--max-num-files"),
     )
     tensorised_data = load_data_from_dir(
-        vocab,
+        vocab_nodes,
+        vocab_actions,
         length=50,
         data_dir=arguments["DATA_DIR"],
         max_num_files=arguments.get("--max-num-files"),
@@ -42,9 +43,9 @@ def run(arguments) -> None:
     for idx in range(min(5, len(tensorised_data))):
         token_ids = tensorised_data[idx]
         length = find_first(
-            vocab.get_id_or_unk(vocab.get_pad()), token_ids
+            vocab_actions.get_id_or_unk(vocab_actions.get_pad()), token_ids
         )
-        tokens = [vocab.get_name_for_id(tok_id) for tok_id in token_ids]
+        tokens = [vocab_actions.get_name_for_id(tok_id) for tok_id in token_ids]
         print("Sample %i:" % (idx))
         print(" Real length: %i" % (length))
         print(" Tensor length: %i" % (len(token_ids)))

@@ -35,11 +35,13 @@ class SyntacticModel(tf.keras.Model):
             "rnn_hidden_dim": 64,
         }
 
-    def __init__(self, hyperparameters: Dict[str, Any], vocab: Vocabulary) -> None:
+    def __init__(self, hyperparameters: Dict[str, Any],
+                 vocab_nodes:Vocabulary, vocab_actions: Vocabulary) -> None:
         super(SyntacticModel, self).__init__()
 
         self.hyperparameters = hyperparameters
-        self.vocab = vocab
+        self.vocab_nodes = vocab_nodes
+        self.vocab_actions = vocab_actions
         self.embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
                                    output_dim=self.hyperparameters['token_embedding_size'],
                                    input_length=self.hyperparameters['max_seq_length'])
@@ -78,7 +80,7 @@ class SyntacticModel(tf.keras.Model):
         # and then the default TF weight saving.
         data_to_store = {
             "model_class": self.__class__.__name__,
-            "vocab": self.vocab,
+            "vocab": self.vocab_actions,
             "hyperparameters": self.hyperparameters,
         }
         with open(path, "wb") as out_file:
@@ -151,7 +153,7 @@ class SyntacticModel(tf.keras.Model):
         # token_ce_loss = tf.reduce_mean(token_ce_loss) becomes redundant, because I do it at TODO 7
 
         # Compute number of (correct) predictions
-        pad_id = self.vocab.get_id_or_unk(self.vocab.get_pad())
+        pad_id = self.vocab_actions.get_id_or_unk(self.vocab_actions.get_pad())
         mask = tf.logical_not(tf.equal(target_token_seq, pad_id))[:, 1:]
 
         # compute predictions correctness and drop the padding by applying the mask

@@ -22,6 +22,12 @@ from dataset import build_vocab_from_data_dir
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    vocab = build_vocab_from_data_dir(args["CORPUS_DATA_DIR"], 500, args["--max-num-files"])
-    print("Loaded vocabulary of %d rules" % len(vocab))
-    print(" %s [...]" % (str(vocab)[:1000]))
+    vocab_nodes, vocab_actions = build_vocab_from_data_dir(args["CORPUS_DATA_DIR"], 500, args["--max-num-files"])
+
+    with open('./test_outputs/vocabulary.txt', 'w') as output:
+        output.write("Nodes vocabulary has size %d\n" % len(vocab_nodes))
+        output.write(" %s [...]\n\n" % (str(vocab_nodes)[:1000]))
+
+        output.write("Actions vocabulary has size %d\n" % len(vocab_actions))
+        output.write(" %s [...]\n\n" % (str(vocab_actions)[:1000]))
+

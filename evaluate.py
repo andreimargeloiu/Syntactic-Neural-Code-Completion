@@ -23,7 +23,8 @@ def run(arguments) -> None:
     print(f"  Loaded trained model from {arguments['--trained-model']}.")
 
     test_data = load_data_from_dir(
-        model.vocab,
+        model.vocab_nodes,
+        model.vocab_actions,
         length=model.hyperparameters["max_seq_length"],
         data_dir=arguments["--test-dir"],
         max_num_files=arguments.get("--max-num-files"),

@@ -128,6 +128,7 @@ def run(arguments) -> None:
     )
     logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
     train_data = load_data_from_dir(
+        vocab_nodes,
         vocab_actions,
         length=hyperparameters["max_seq_length"],
         data_dir=args["--train-data-dir"],
@@ -135,13 +136,14 @@ def run(arguments) -> None:
     )
     logging.info(f"  Loaded {train_data.shape[0]} training samples from {args['--train-data-dir']}.")
     valid_data = load_data_from_dir(
+        vocab_nodes,
         vocab_actions,
         length=hyperparameters["max_seq_length"],
         data_dir=args["--valid-data-dir"],
         max_num_files=max_num_files,
     )
     logging.info(f"  Loaded {valid_data.shape[0]} validation samples from {args['--valid-data-dir']}.")
-    model = SyntacticModel(hyperparameters, vocab_actions)
+    model = SyntacticModel(hyperparameters, vocab_nodes, vocab_actions)
     model.build(([None, hyperparameters["max_seq_length"]]))
     logging.info("Constructed model, using the following hyperparameters:")
     logging.info(json.dumps(hyperparameters))
