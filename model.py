@@ -31,7 +31,7 @@ class SyntacticModel(tf.keras.Model):
             "max_vocab_size": 10000,
             "max_seq_length": 50,
             "batch_size": 128,
-            "node_embedding_size": 2,
+            "node_embedding_size": 32,
             "action_embedding_size": 64,
             "token_embedding_size": 64,
             "rnn_hidden_dim": 64,

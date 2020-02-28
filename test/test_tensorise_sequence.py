@@ -32,7 +32,7 @@ def run(arguments) -> None:
         vocab_size=500,
         max_num_files=arguments.get("--max-num-files"),
     )
-    tensorised_data = load_data_from_dir(
+    tensorised_nodes, tensorised_actions = load_data_from_dir(
         vocab_nodes,
         vocab_actions,
         length=50,
@@ -40,8 +40,8 @@ def run(arguments) -> None:
         max_num_files=arguments.get("--max-num-files"),
     )
 
-    for idx in range(min(5, len(tensorised_data))):
-        token_ids = tensorised_data[idx]
+    for idx in range(min(5, len(tensorised_actions))):
+        token_ids = tensorised_actions[idx]
         length = find_first(
             vocab_actions.get_id_or_unk(vocab_actions.get_pad()), token_ids
         )
