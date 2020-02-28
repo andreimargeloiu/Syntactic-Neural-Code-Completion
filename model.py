@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import Any, Dict, NamedTuple, List, Iterable
+from typing import Any, Dict, NamedTuple, List, Iterable, Tuple
 
 import tensorflow.compat.v2 as tf
 import numpy as np
@@ -31,6 +31,8 @@ class SyntacticModel(tf.keras.Model):
             "max_vocab_size": 10000,
             "max_seq_length": 50,
             "batch_size": 128,
+            "node_embedding_size": 2,
+            "action_embedding_size": 64,
             "token_embedding_size": 64,
             "rnn_hidden_dim": 64,
         }
@@ -42,9 +44,19 @@ class SyntacticModel(tf.keras.Model):
         self.hyperparameters = hyperparameters
         self.vocab_nodes = vocab_nodes
         self.vocab_actions = vocab_actions
+
+        self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                         output_dim=self.hyperparameters['node_embedding_size'],
+                                         input_length=self.hyperparameters['max_seq_length'])
+
+        self.actions_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                           output_dim=self.hyperparameters['action_embedding_size'],
+                                           input_length=self.hyperparameters['max_seq_length'])
+
         self.embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
                                    output_dim=self.hyperparameters['token_embedding_size'],
                                    input_length=self.hyperparameters['max_seq_length'])
+
         self.gru = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim'], return_sequences=True)
         self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
 
@@ -106,13 +118,13 @@ class SyntacticModel(tf.keras.Model):
     def call(self, inputs, training):
         return self.compute_logits(inputs, training)
 
-    def compute_logits(self, token_ids: tf.Tensor, training: bool) -> tf.Tensor:
+    def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
         """
         Implements a language model, where each output is conditional on the current
         input and inputs processed so far.
 
         Args:
-            token_ids: int32 tensor of shape [B, T], storing integer IDs of tokens.
+            inputs: int32 tensor of shape [B, T, 2], storing integer IDs of the Nodes and the Actions as a stacked tensor.
             training: Flag indicating if we are currently training (used to toggle dropout)
 
         Returns:
@@ -120,8 +132,19 @@ class SyntacticModel(tf.keras.Model):
             for each timestep for each batch element.
         """
 
-        embeddings = self.embedding(token_ids)
-        cell_output = self.gru(embeddings, training=training)
+        # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
+        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2) # (None, 50, 2)
+        nodes_ids = tf.squeeze(nodes_ids, axis=2) # (None, 50)
+        actions_ids = tf.squeeze(actions_ids, axis=2)
+
+        # Get embeddings
+        nodes_emb = self.nodes_embedding(nodes_ids)
+        actions_emb = self.actions_embedding(actions_ids)
+
+        # concat embeddings
+        concat_input = tf.concat([nodes_emb, actions_emb], axis=2)
+
+        cell_output = self.gru(concat_input, training=training)
         rnn_output_logits = self.dense(cell_output)
 
         return rnn_output_logits
@@ -171,6 +194,7 @@ class SyntacticModel(tf.keras.Model):
 
         return LanguageModelLoss(token_ce_loss, num_tokens, num_correct_tokens)
 
+    # TODO update it to receive Nodes and Actions ids (currently it receives only Actions ids)
     def predict_next_token(self, token_seq: List[int]):
         output_logits = self.compute_logits(
             np.array([token_seq], dtype=np.int32), training=False
@@ -180,17 +204,17 @@ class SyntacticModel(tf.keras.Model):
         return next_tok_probs.numpy()
 
     def run_one_epoch(
-            self, minibatches: Iterable[np.ndarray], training: bool = False,
+            self, minibatches: Tuple[Iterable[np.ndarray], Iterable[np.ndarray]], training: bool = False,
     ):
         total_loss, num_samples, num_tokens, num_correct_tokens = 0.0, 0, 0, 0
-        for step, minibatch_data in enumerate(minibatches):
+        for step, (minibatch_nodes, minibatch_actions) in enumerate(minibatches):
             with tf.GradientTape() as tape:
-                model_outputs = self.compute_logits(minibatch_data, training=training)
+                model_outputs = self.compute_logits(tf.stack([minibatch_nodes, minibatch_actions], axis=2), training=training)
 
-                result = self.compute_loss_and_acc(model_outputs, minibatch_data)
+                result = self.compute_loss_and_acc(model_outputs, minibatch_actions)
 
             total_loss += result.token_ce_loss
-            num_samples += minibatch_data.shape[0]
+            num_samples += minibatch_actions.shape[0]
             num_tokens += result.num_predictions
             num_correct_tokens += result.num_correct_token_predictions
 

@@ -119,33 +119,42 @@ def build_grammar_from_data_dir(data_dir: str, max_num_files: Optional[int] = No
 
 
 def tensorise_token_sequence(
-        vocab: Vocabulary, length: int, token_seq: Iterable[str],
+        vocab_nodes: Vocabulary, vocab_actions: Vocabulary, length: int,
+        actions_seq: Iterable[str], nodes_seq: Iterable[str],
 ) -> List[int]:
     """
     Tensorise a single example (Transform the token sequence into a sequence of IDs of fixed length)
 
     Args:
-        vocab: Vocabulary to use for mapping tokens to integer IDs
+        vocab_nodes, vocab_actions: Vocabulary to use for mapping tokens to integer IDs
         length: Length to truncate/pad sequences to.
         token_seq: Sequence of tokens to tensorise.
 
     Returns:
         List with length elements that are integer IDs of tokens in our vocab.
+        :param actions_seq:
     """
-    token_ids = [vocab.get_id_or_unk(START_SYMBOL)]
-    token_ids.extend(vocab.get_id_or_unk_multiple(token_seq, pad_to_size=length - 1))
 
-    # END_SYMBOL must be the last element in the tokenised sequence
-    end_position = min(1 + len(token_seq), length - 1)
-    token_ids[end_position] = vocab.get_id_or_unk(END_SYMBOL)
+    ### Compute Actions ids
+    actions_ids = [vocab_actions.get_id_or_unk(START_SYMBOL)]
+    actions_ids.extend(vocab_actions.get_id_or_unk_multiple(actions_seq, pad_to_size=length - 1))
+    end_position = min(1 + len(actions_seq),
+                       length - 1)  # END_SYMBOL must be the last element in the tokenised sequence
+    actions_ids[end_position] = vocab_actions.get_id_or_unk(END_SYMBOL)
 
-    return token_ids
+    ### Compute Nodes ids
+    nodes_ids = [vocab_nodes.get_id_or_unk(START_SYMBOL)]
+    nodes_ids.extend(vocab_nodes.get_id_or_unk_multiple(nodes_seq, pad_to_size=length - 1))
+    end_position = min(1 + len(nodes_seq), length - 1)
+    nodes_ids[end_position] = vocab_nodes.get_id_or_unk(END_SYMBOL)
+
+    return nodes_ids, actions_ids
 
 
 def load_data_from_dir(
         vocab_node: Vocabulary, vocab_action: Vocabulary,
         length: int, data_dir: str, max_num_files: Optional[int] = None
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Load and tensorise data.
 
@@ -161,32 +170,40 @@ def load_data_from_dir(
     """
     data_files = get_data_files_from_directory(data_dir, max_num_files)
 
-    tensorised_result = []
+    tensorised_actions = []
+    tensorised_nodes = []
     for data_file in data_files:
         actions_seq, nodes_seq = load_data_file(data_file)
 
         for action_seq, node_seq in zip(actions_seq, nodes_seq):
-            tensorised_result.append(tensorise_token_sequence(vocab_action, length, action_seq))
+            nodes_seq_tensorised, actions_seq_tensorised = \
+                tensorise_token_sequence(vocab_node, vocab_action, length, action_seq, node_seq)
 
-    return np.array(tensorised_result, dtype=np.int32)
+            tensorised_nodes.append(nodes_seq_tensorised)
+            tensorised_actions.append(actions_seq_tensorised)
+
+    return np.array(tensorised_nodes, dtype=np.int32), \
+           np.array(tensorised_actions, dtype=np.int32)
 
 
 def get_minibatch_iterator(
-    token_seqs: np.ndarray,
-    batch_size: int,
-    is_training: bool,
-    drop_remainder: bool = True
+        token_seqs_tuple: Tuple[np.ndarray, np.ndarray],
+        batch_size: int,
+        is_training: bool,
+        drop_remainder: bool = True
 ) -> Iterator[np.ndarray]:
     """
     Create an iterator for a minibatch by shuffling the token sequences.
+    :param token_seqs_tuple: is a tuple of (nodes_ids, action_ids)
     """
-    indices = np.arange(token_seqs.shape[0])
+    indices = np.arange(token_seqs_tuple[0].shape[0])
     if is_training:
         np.random.shuffle(indices)
 
     for minibatch_indices in chunked(indices, batch_size):
         if len(minibatch_indices) < batch_size and drop_remainder:
-            break # Drop last, smaller batch
+            break  # Drop last, smaller batch
 
-        minibatch_seqs = token_seqs[minibatch_indices]
-        yield minibatch_seqs
+        nodes_minibatch_seqs = token_seqs_tuple[0][minibatch_indices]
+        actions_minibatch_seqs = token_seqs_tuple[1][minibatch_indices]
+        yield nodes_minibatch_seqs, actions_minibatch_seqs

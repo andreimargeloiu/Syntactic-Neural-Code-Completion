@@ -22,7 +22,7 @@ def run(arguments) -> None:
     model = SyntacticModel.restore(arguments["--trained-model"])
     print(f"  Loaded trained model from {arguments['--trained-model']}.")
 
-    test_data = load_data_from_dir(
+    test_data_nodes, test_data_actions = load_data_from_dir(
         model.vocab_nodes,
         model.vocab_actions,
         length=model.hyperparameters["max_seq_length"],
@@ -30,12 +30,12 @@ def run(arguments) -> None:
         max_num_files=arguments.get("--max-num-files"),
     )
     print(
-        f"  Loaded {test_data.shape[0]} test samples from {arguments['--test-dir']}."
+        f"  Loaded {test_data_actions.shape[0]} test samples from {arguments['--test-dir']}."
     )
 
     test_loss, test_acc = model.run_one_epoch(
         get_minibatch_iterator(
-            test_data,
+            test_data_actions,
             model.hyperparameters["batch_size"],
             is_training=False,
             drop_remainder=False,

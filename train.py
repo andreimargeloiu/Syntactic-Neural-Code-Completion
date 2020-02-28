@@ -25,7 +25,7 @@ from datetime import datetime
 import git
 import time
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 import tensorflow.compat.v2 as tf
 
 import numpy as np
@@ -38,13 +38,16 @@ from model import SyntacticModel
 
 def train(
         model: SyntacticModel,
-        train_data: np.ndarray,
-        valid_data: np.ndarray,
+        train_data: Tuple[np.ndarray, np.ndarray],
+        valid_data: Tuple[np.ndarray, np.ndarray],
         batch_size: int,
         max_epochs: int,
         patience: int,
         save_file: str,
 ):
+    """
+    :param train_data, valid_data: are tuples with (Nodes_tensorised, Actions_tensorised)
+    """
     best_valid_loss, _ = model.run_one_epoch(
         get_minibatch_iterator(valid_data, batch_size, is_training=False),
         training=False,
@@ -134,7 +137,7 @@ def run(arguments) -> None:
         data_dir=args["--train-data-dir"],
         max_num_files=max_num_files,
     )
-    logging.info(f"  Loaded {train_data.shape[0]} training samples from {args['--train-data-dir']}.")
+    logging.info(f"  Loaded {train_data[0].shape[0]} training samples from {args['--train-data-dir']}.")
     valid_data = load_data_from_dir(
         vocab_nodes,
         vocab_actions,
@@ -142,9 +145,10 @@ def run(arguments) -> None:
         data_dir=args["--valid-data-dir"],
         max_num_files=max_num_files,
     )
-    logging.info(f"  Loaded {valid_data.shape[0]} validation samples from {args['--valid-data-dir']}.")
+    logging.info(f"  Loaded {valid_data[0].shape[0]} validation samples from {args['--valid-data-dir']}.")
+
     model = SyntacticModel(hyperparameters, vocab_nodes, vocab_actions)
-    model.build(([None, hyperparameters["max_seq_length"]]))
+    model.build(([None, hyperparameters["max_seq_length"], 2]))
     logging.info("Constructed model, using the following hyperparameters:")
     logging.info(json.dumps(hyperparameters))
 
