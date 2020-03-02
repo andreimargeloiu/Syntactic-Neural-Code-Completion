@@ -34,17 +34,19 @@ class SyntacticModel(tf.keras.Model):
             "node_embedding_size": 32,
             "action_embedding_size": 64,
             "token_embedding_size": 64,
-            "rnn_hidden_dim": 64,
+            "rnn_hidden_dim_1": 64,
+            "rnn_hidden_dim_2": 64,
         }
 
     def __init__(self, hyperparameters: Dict[str, Any],
-                 vocab_nodes:Vocabulary, vocab_actions: Vocabulary) -> None:
+                 vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
         super(SyntacticModel, self).__init__()
 
         self.hyperparameters = hyperparameters
         self.vocab_nodes = vocab_nodes
         self.vocab_actions = vocab_actions
 
+        # Parameters
         self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
                                          output_dim=self.hyperparameters['node_embedding_size'],
                                          input_length=self.hyperparameters['max_seq_length'])
@@ -53,11 +55,7 @@ class SyntacticModel(tf.keras.Model):
                                            output_dim=self.hyperparameters['action_embedding_size'],
                                            input_length=self.hyperparameters['max_seq_length'])
 
-        self.embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
-                                   output_dim=self.hyperparameters['token_embedding_size'],
-                                   input_length=self.hyperparameters['max_seq_length'])
-
-        self.gru = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim'], return_sequences=True)
+        self.gru1 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_1'], return_sequences=True)
         self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
 
         # Also prepare optimizer:
@@ -133,8 +131,8 @@ class SyntacticModel(tf.keras.Model):
         """
 
         # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
-        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2) # (None, 50, 2)
-        nodes_ids = tf.squeeze(nodes_ids, axis=2) # (None, 50)
+        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
+        nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
         actions_ids = tf.squeeze(actions_ids, axis=2)
 
         # Get embeddings
@@ -144,7 +142,7 @@ class SyntacticModel(tf.keras.Model):
         # concat embeddings
         concat_input = tf.concat([nodes_emb, actions_emb], axis=2)
 
-        cell_output = self.gru(concat_input, training=training)
+        cell_output = self.gru1(concat_input, training=training)
         rnn_output_logits = self.dense(cell_output)
 
         return rnn_output_logits
@@ -199,7 +197,7 @@ class SyntacticModel(tf.keras.Model):
         output_logits = self.compute_logits(
             np.array([token_seq], dtype=np.int32), training=False
         )
-        next_tok_logits = output_logits[0, -1, :] # Take only the last prediction
+        next_tok_logits = output_logits[0, -1, :]  # Take only the last prediction
         next_tok_probs = tf.nn.softmax(next_tok_logits)
         return next_tok_probs.numpy()
 
@@ -209,7 +207,8 @@ class SyntacticModel(tf.keras.Model):
         total_loss, num_samples, num_tokens, num_correct_tokens = 0.0, 0, 0, 0
         for step, (minibatch_nodes, minibatch_actions) in enumerate(minibatches):
             with tf.GradientTape() as tape:
-                model_outputs = self.compute_logits(tf.stack([minibatch_nodes, minibatch_actions], axis=2), training=training)
+                model_outputs = self.compute_logits(tf.stack([minibatch_nodes, minibatch_actions], axis=2),
+                                                    training=training)
 
                 result = self.compute_loss_and_acc(model_outputs, minibatch_actions)
 
