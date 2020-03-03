@@ -16,8 +16,7 @@ python ./test/test_compute_vocabulary.py --max-num-file=10 ./test
 Train:
 ```
 python train.py --save-dir="./trained_models"\
-                --train-data-dir="../corpus-features/jsoup"\
-                --valid-data-dir="../corpus-features/jsoup/"\
+                --train-data-dir="../corpus-features"\
                 --log-file='./logs/training.log'\
                 --tensorboard-logs-path="./logs_tensorboard"\
                 --max-num-epochs 100\
@@ -29,6 +28,11 @@ Evaluate:
 ```
 python evaluate.py --trained-model="trained_models/RNNModel-2020-02-27-07-48-44_best_model.bin"\
                    --test-dir="../corpus-features/jsoup/"
+```
+
+Compute training data statistics:
+```
+python read_training_data.py --train-data-dir="../corpus-features"
 ```
 
 

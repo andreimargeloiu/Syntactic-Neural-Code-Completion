@@ -13,13 +13,13 @@ Options:
     --log-file=NAME
     --save-dir=NAME                 Save the models path
     --train-data-dir=NAME           Training directory path
-    --valid-data-dir=NAME           Validation directory path
     --hypers-override HYPERS        JSON dictionary overriding hyperparameter values.
     --run-name NAME                 Picks a name for the trained model.
     --debug                         Enable debug routines. [default: False]
 """
 import json
 import os
+import random
 from datetime import datetime
 
 import git
@@ -32,8 +32,9 @@ import numpy as np
 from docopt import docopt
 from dpu_utils.utils import run_and_debug
 
-from dataset import build_vocab_from_data_dir, build_grammar_from_data_dir, get_minibatch_iterator, load_data_from_dir
+from dataset import build_vocab_from_data_dir, get_minibatch_iterator, load_data_from_dir
 from model import SyntacticModel
+from read_training_data import training_dirs
 
 
 def train(
@@ -123,30 +124,48 @@ def run(arguments) -> None:
         save_model_dir, f"{hyperparameters['run_id']}_best_model.bin"
     )
 
+    #### Make list of all training data directories
+    data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in training_dirs]
+
+    ##### Load data
     logging.info("Loading data ...")
     vocab_nodes, vocab_actions = build_vocab_from_data_dir(
-        data_dir=args["--train-data-dir"],
+        data_dirs=data_dirs,
         vocab_size=hyperparameters["max_vocab_size"],
         max_num_files=max_num_files,
     )
     logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
-    train_data = load_data_from_dir(
+    all_nodes, all_actions = load_data_from_dir(
         vocab_nodes,
         vocab_actions,
         length=hyperparameters["max_seq_length"],
-        data_dir=args["--train-data-dir"],
+        data_dirs=data_dirs,
         max_num_files=max_num_files,
     )
-    logging.info(f"  Loaded {train_data[0].shape[0]} training samples from {args['--train-data-dir']}.")
-    valid_data = load_data_from_dir(
-        vocab_nodes,
-        vocab_actions,
-        length=hyperparameters["max_seq_length"],
-        data_dir=args["--valid-data-dir"],
-        max_num_files=max_num_files,
-    )
-    logging.info(f"  Loaded {valid_data[0].shape[0]} validation samples from {args['--valid-data-dir']}.")
 
+    # Shuffle and split data into train/valid/test
+    indices = np.arange(all_nodes.shape[0])
+    np.random.shuffle(indices)
+    ind_len = indices.shape[0]
+
+    train_indices = indices[:(int)(0.8 * ind_len)]
+    valid_indices = indices[(int)(0.8 * ind_len):(int)(0.9 * ind_len)]
+    test_indices = indices[(int)(0.9 * ind_len):]
+
+    # Make the datasets
+    train_data = (all_nodes[train_indices],
+                  all_actions[train_indices])
+    valid_data = (all_nodes[valid_indices],
+                  all_actions[valid_indices])
+    test_data = (all_nodes[test_indices],
+                  all_actions[test_indices])
+
+    logging.info(f"  Loaded {train_data[0].shape[0]} training samples.")
+    logging.info(f"  Loaded {valid_data[0].shape[0]} validation samples.")
+
+
+
+    # Construct model
     model = SyntacticModel(hyperparameters, vocab_nodes, vocab_actions)
     model.build(([None, hyperparameters["max_seq_length"], 2]))
     logging.info("Constructed model, using the following hyperparameters:")
@@ -179,6 +198,13 @@ def make_run_id(arguments: Dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     args = docopt(__doc__)
+
+    # Set random seeds for reproducibility
+    tf.random.set_seed(0)
+    random.seed(0)
+    np.random.seed(0)
+
+
     # Logging configuration
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',

@@ -16,19 +16,23 @@ START_SYMBOL = "%START%"
 END_SYMBOL = "%END%"
 
 
-def get_data_files_from_directory(data_dir: str, max_num_files: Optional[int] = None) -> List[str]:
+def get_data_files_from_directory(data_dirs: List[str], max_num_files: Optional[int] = None) -> List[str]:
     """
     Get list of paths for file .proto of Graph
     """
     # get a generator for all files matching the extensions
-    files = iglob(
-        os.path.join(data_dir, "**/*.%s" % DATA_FILE_EXTENSION), recursive=True
-    )
+    all_files = []
+    for data_dir in data_dirs:
+        files = iglob(
+            os.path.join(data_dir, "**/*.%s" % DATA_FILE_EXTENSION), recursive=True
+        )
+        all_files.extend(list(files))
+
+    all_files = sorted(all_files)
     if max_num_files:
-        files = sorted(files)[: int(max_num_files)]
-    else:
-        files = list(files)
-    return files
+        all_files = all_files[:int(max_num_files)]
+
+    return all_files
 
 
 def get_methods_action_sequences(node: TreeNode):
@@ -73,12 +77,12 @@ def load_data_file(file_path: str, as_string=True) -> (Iterable[List[str]], Iter
         return actions_list, nodes_list
 
 
-def build_vocab_from_data_dir(data_dir: str, vocab_size: int, max_num_files: Optional[int]) \
+def build_vocab_from_data_dir(data_dirs: str, vocab_size: int, max_num_files: Optional[int]) \
         -> Tuple[Vocabulary, Vocabulary]:
     """
     Build an Action Vocabulary and a Node Vocabulary
     """
-    data_files = get_data_files_from_directory(data_dir, max_num_files)
+    data_files = get_data_files_from_directory(data_dirs, max_num_files)
 
     # Create vocabulary with START_SYMBOL and END_SYMBOL
     vocab_nodes = Vocabulary(add_unk=True, add_pad=True)
@@ -153,7 +157,7 @@ def tensorise_token_sequence(
 
 def load_data_from_dir(
         vocab_node: Vocabulary, vocab_action: Vocabulary,
-        length: int, data_dir: str, max_num_files: Optional[int] = None
+        length: int, data_dirs: str, max_num_files: Optional[int] = None
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Load and tensorise data.
@@ -168,7 +172,7 @@ def load_data_from_dir(
         numpy int32 array of shape [None, length], containing the tensorised
         data.
     """
-    data_files = get_data_files_from_directory(data_dir, max_num_files)
+    data_files = get_data_files_from_directory(data_dirs, max_num_files)
 
     tensorised_actions = []
     tensorised_nodes = []
