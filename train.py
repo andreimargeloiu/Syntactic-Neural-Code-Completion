@@ -12,7 +12,9 @@ Options:
     --tensorboard-logs-path=NAME    Path to tensorboard logs
     --log-file=NAME
     --save-dir=NAME                 Save the models path
+    --compute-data                  Flag for computing the training data
     --train-data-dir=NAME           Training directory path
+    --saved-data-dir=NAME           Location of already computed data directory.
     --hypers-override HYPERS        JSON dictionary overriding hyperparameter values.
     --run-name NAME                 Picks a name for the trained model.
     --debug                         Enable debug routines. [default: False]
@@ -20,6 +22,7 @@ Options:
 import json
 import os
 import random
+import pickle
 from datetime import datetime
 
 import git
@@ -34,7 +37,7 @@ from dpu_utils.utils import run_and_debug
 
 from dataset import build_vocab_from_data_dir, get_minibatch_iterator, load_data_from_dir
 from model import SyntacticModel
-from read_training_data import training_dirs
+from compute_training_data import training_dirs
 
 
 def train(
@@ -127,21 +130,52 @@ def run(arguments) -> None:
     #### Make list of all training data directories
     data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in training_dirs]
 
-    ##### Load data
-    logging.info("Loading data ...")
-    vocab_nodes, vocab_actions = build_vocab_from_data_dir(
-        data_dirs=data_dirs,
-        vocab_size=hyperparameters["max_vocab_size"],
-        max_num_files=max_num_files,
-    )
-    logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
-    all_nodes, all_actions = load_data_from_dir(
-        vocab_nodes,
-        vocab_actions,
-        length=hyperparameters["max_seq_length"],
-        data_dirs=data_dirs,
-        max_num_files=max_num_files,
-    )
+    if args['--compute-data']:
+        """
+        Create and save the training data
+        """
+        logging.info("Computing data ...")
+        vocab_nodes, vocab_actions = build_vocab_from_data_dir(
+            data_dirs=data_dirs,
+            vocab_size=hyperparameters["max_vocab_size"],
+            max_num_files=max_num_files,
+        )
+        logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
+        all_nodes, all_actions = load_data_from_dir(
+            vocab_nodes,
+            vocab_actions,
+            length=hyperparameters["max_seq_length"],
+            data_dirs=data_dirs,
+            max_num_files=max_num_files,
+        )
+        logging.info(f"  Built dataset of {all_nodes.shape[0]} training examples.")
+
+        # Save data
+        with open('data/vocab_nodes', 'wb') as output:
+            pickle.dump(vocab_nodes, output)
+        with open('data/vocab_actions', 'wb') as output:
+            pickle.dump(vocab_actions, output)
+        with open('data/all_nodes', 'wb') as output:
+            pickle.dump(all_nodes, output)
+        with open('data/all_actions', 'wb') as output:
+            pickle.dump(all_actions, output)
+
+        logging.info("Finished computing data ...")
+        logging.info("Now exiting program. Rerun with loading the data from memory...")
+        exit(0)
+
+
+    logging.info("Loading data into memory...")
+    ### Load data
+    with open(os.path.join(args['--saved-data-dir'], 'vocab_nodes'), 'rb') as input:
+        vocab_nodes = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'vocab_actions'), 'rb') as input:
+        vocab_actions = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'all_nodes'), 'rb') as input:
+        all_nodes = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'all_actions'), 'rb') as input:
+        all_actions = pickle.load(input)
+
 
     # Shuffle and split data into train/valid/test
     indices = np.arange(all_nodes.shape[0])

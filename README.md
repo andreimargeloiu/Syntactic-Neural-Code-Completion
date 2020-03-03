@@ -16,12 +16,14 @@ python ./test/test_compute_vocabulary.py --max-num-file=10 ./test
 Train:
 ```
 python train.py --save-dir="./trained_models"\
+                --saved-data-dir="./data"\
                 --train-data-dir="../corpus-features"\
                 --log-file='./logs/training.log'\
                 --tensorboard-logs-path="./logs_tensorboard"\
                 --max-num-epochs 100\
                 --patience 5\
-                --max-num-files 10
+                --max-num-files 250\
+                --compute-data
 ```
 
 Evaluate:
