@@ -96,8 +96,11 @@ def build_vocab_from_data_dir(data_dirs: str, vocab_size: int, max_num_files: Op
 
     # Count actions and nodes
     counter_nodes, counter_actions = Counter(), Counter()
-    for file_path in data_files:  # for each file, count all tokens
+    for i, file_path in enumerate(data_files):  # for each file, count all tokens
         action_lists, node_lists = load_data_file(file_path, as_string=True)
+
+        if i%50 == 0:
+            print(f"Loaded the {i}th file for building vocabulary")
 
         for action_sequence, node_sequence in zip(action_lists, node_lists):
             for action, node in zip(action_sequence, node_sequence):
@@ -176,8 +179,11 @@ def load_data_from_dir(
 
     tensorised_actions = []
     tensorised_nodes = []
-    for data_file in data_files:
+    for i, data_file in enumerate(data_files):
         actions_seq, nodes_seq = load_data_file(data_file)
+
+        if i%50 == 0:
+            print(f"Loaded the {i}th file for building the training data")
 
         for action_seq, node_seq in zip(actions_seq, nodes_seq):
             nodes_seq_tensorised, actions_seq_tensorised = \
