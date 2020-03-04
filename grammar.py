@@ -55,8 +55,8 @@ class TreeNode:
     def __init__(self, feature_node: FeatureNode, children):
         # all nodes should have a startPosition and endPosition
         assert feature_node.startPosition != -1 or feature_node.endPosition != -1
-        if feature_node.startPosition == -1 or feature_node.endPosition == -1:
-            print(feature_node)
+        # if feature_node.startPosition == -1 or feature_node.endPosition == -1:
+            # print(feature_node)
 
         self.feature_node = feature_node  # FeatureNode extracted from the .proto file
         self.children = children  # List of children sorted from left to right

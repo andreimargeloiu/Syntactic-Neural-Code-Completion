@@ -24,6 +24,7 @@ from grammar import Grammar
 if __name__ == '__main__':
     args = docopt(__doc__)
 
+    print("Computing grammar")
     grammar = build_grammar_from_data_dir(args['CORPUS_DATA_DIR'], args.get("--max-num-files"))
 
     grammar.save()

@@ -20,7 +20,7 @@ from dataset import load_data_from_dir, get_minibatch_iterator
 from model import SyntacticModelv2, SyntacticModelv1, SyntacticModelv3
 
 
-def run(args) -> None:
+def evaluate(args) -> list:
     print("Loading model ...")
     if args['--model'] == 'v1':
         model = SyntacticModelv1.restore(args["--trained-model"])
@@ -32,16 +32,22 @@ def run(args) -> None:
     print(f"  Loaded trained model from {args['--trained-model']}.")
 
     print("Loading data ...")
+    with open(os.path.join(args['--saved-data-dir'], 'train_data'), 'rb') as input:
+        train_data = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'valid_data'), 'rb') as input:
+        valid_data = pickle.load(input)
     with open(os.path.join(args['--saved-data-dir'], 'seen_test_data'), 'rb') as input:
         seen_test_data = pickle.load(input)
     with open(os.path.join(args['--saved-data-dir'], 'unseen_test_data'), 'rb') as input:
         unseen_test_data = pickle.load(input)
 
+    print(f"  Loaded {train_data[0].shape[0]} training samples.")
+    print(f"  Loaded {valid_data[0].shape[0]} validation samples.")
     print(f"  Loaded {seen_test_data[0].shape[0]} seen test samples.")
     print(f"  Loaded {unseen_test_data[0].shape[0]} unseen test samples.")
 
-
-    for dataset, name in zip([seen_test_data, unseen_test_data], ['seen_test_data', 'unseen_test_data']):
+    accs = []
+    for dataset, name in zip([train_data, valid_data, seen_test_data, unseen_test_data], ['train_data', 'valid_data', 'seen_test_data', 'unseen_test_data']):
         test_loss, test_acc = model.run_one_epoch(
             get_minibatch_iterator(
                 dataset,
@@ -52,7 +58,10 @@ def run(args) -> None:
             training=False,
         )
         print(f"{name}:  Loss {test_loss:.4f}, Acc {test_acc:.3f}")
+        accs.append(test_acc)
+
+    return accs
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    run_and_debug(lambda: run(args), args["--debug"])
+    run_and_debug(lambda: evaluate(args), args["--debug"])

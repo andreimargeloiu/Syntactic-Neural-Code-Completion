@@ -20,24 +20,35 @@ python train.py --compute-data\
                 --train-data-dir="../corpus-features"\
                 --log-file="./logs/training.log"\
                 --tensorboard-logs-path="./logs_tensorboard"\
-                --max-num-files 250
+                --max-num-files 50
 ```
 
 Train:
 ```
 python train.py --model='v2'\
                 --save-dir="./trained_models"\
-                --saved-data-dir="./data"\
+                --saved-data-dir="./data/250"\
                 --log-file='./logs/training.log'\
                 --tensorboard-logs-path="./logs_tensorboard"\
                 --max-num-epochs 100\
                 --patience 5
 ```
 
+Hyper-parameter search:
+```
+python hyper_parameter_search.py --model='v1'\
+                                  --save-dir="./trained_models"\
+                                  --saved-data-dir="./data/250"\
+                                  --log-file='./logs/training.log'\
+                                  --log-file-hyperparams='./logs'\
+                                  --tensorboard-logs-path="./logs_tensorboard"
+                                  
+```
+
 Evaluate:
 ```
-python evaluate.py --trained-model="trained_models/RNNModel-2020-03-04-14-02-59_best_model.bin"\
-                   --saved-data-dir="./data"\
+python evaluate.py --trained-model="trained_models/RNNModel-2020-03-04-14-11-00_best_model.bin"\
+                   --saved-data-dir="./data/500"\
                    --model="v2"
 ```
 

@@ -1,29 +1,20 @@
-public class Example {
-    int a, b, c;
-    private static final int PROTEINS = 0;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
-	public void for_loop() {
-        for (int i; i<=100; ++i) {
-            a++;
+public class Example {
+	private ArrayList<Integer> validation_error;
+
+    private void check_convergence(ArrayList<Integer> list) {
+        for (int i=0; i<10; ++i) {
+            if (i > 0) {
+                break;
+            }
         }
 	}
 
-    public void increase_b() {
-        b++;
-    }
-
-    public void method_ifelse() {
-        if (a > b) {
-            b++;
-        } else {
-            a++;
-        }
-    }
-
-    public void method_throws() throws Exception, IllegalArgumentException {
-        if (a > 5) {
-        	throw new Exception();
-        }
-    }
+	public void add_error(int error){
+	    validation_error.add(error);
+		check_convergence(validation_error);
+	}
 }
-

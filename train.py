@@ -19,6 +19,7 @@ Options:
     --hypers-override HYPERS        JSON dictionary overriding hyperparameter values.
     --run-name NAME                 Picks a name for the trained model.
     --debug                         Enable debug routines. [default: False]
+    --run-name=NAME
 """
 import json
 import os
@@ -36,7 +37,7 @@ import numpy as np
 from docopt import docopt
 from dpu_utils.utils import run_and_debug
 
-from dataset import build_vocab_from_data_dir, get_minibatch_iterator, load_data_from_dir
+from dataset import build_vocab_from_data_dir, get_minibatch_iterator, load_data_from_dir, get_data_files_from_directory
 from model import SyntacticModelv2, BaseModel, SyntacticModelv1, SyntacticModelv3
 from compute_training_data import training_dirs, unseen_test_dirs
 
@@ -49,6 +50,7 @@ def train(
         max_epochs: int,
         patience: int,
         save_file: str,
+        args
 ):
     """
     :param train_data, valid_data: are tuples with (Nodes_tensorised, Actions_tensorised)
@@ -110,7 +112,7 @@ def train(
             break
 
 
-def run(arguments) -> None:
+def run(args) -> None:
     hyperparameters = BaseModel.get_default_hyperparameters()
     if args['--model'] == 'v1':
         hyperparameters = SyntacticModelv1.get_default_hyperparameters()
@@ -119,13 +121,13 @@ def run(arguments) -> None:
     elif args['--model'] == 'v3':
         hyperparameters = SyntacticModelv3.get_default_hyperparameters()
 
-    hyperparameters["run_id"] = make_run_id(arguments)
-    max_epochs = int(arguments.get("--max-num-epochs"))
-    patience = int(arguments.get("--patience"))
-    max_num_files = arguments.get("--max-num-files")
+    hyperparameters["run_id"] = make_run_id(args)
+    max_epochs = int(args.get("--max-num-epochs"))
+    patience = int(args.get("--patience"))
+    max_num_files = args.get("--max-num-files")
 
     # override hyperparams if flag is passed
-    hypers_override = arguments.get("--hypers-override")
+    hypers_override = args.get("--hypers-override")
     if hypers_override is not None:
         hyperparameters.update(json.loads(hypers_override))
 
@@ -133,9 +135,12 @@ def run(arguments) -> None:
         """
         Create and save the training data
         """
+
+        if os.path.isdir(f'./data/{args["--max-num-files"]}') == False:
+            os.mkdir(f'./data/{args["--max-num-files"]}')
+
         #### Make list of all training data directories
         data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in training_dirs]
-
         logging.info("Computing train/valid/test data ...")
         vocab_nodes, vocab_actions = build_vocab_from_data_dir(
             data_dirs=data_dirs,
@@ -143,8 +148,6 @@ def run(arguments) -> None:
             max_num_files=max_num_files,
         )
         logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
-
-
 
         ### Build Train/Valid/SeenTest datasets
         all_nodes, all_actions, all_fathers = load_data_from_dir(
@@ -156,9 +159,9 @@ def run(arguments) -> None:
         )
         logging.info(f"  Built dataset of {all_nodes.shape[0]} training/valid/test examples.")
         # Save data
-        with open('data/vocab_nodes', 'wb') as output:
+        with open(f'data/{args["--max-num-files"]}/vocab_nodes', 'wb') as output:
             pickle.dump(vocab_nodes, output)
-        with open('data/vocab_actions', 'wb') as output:
+        with open(f'data/{args["--max-num-files"]}/vocab_actions', 'wb') as output:
             pickle.dump(vocab_actions, output)
 
         # Shuffle and split data into train/valid/test
@@ -181,13 +184,12 @@ def run(arguments) -> None:
                           all_actions[seen_test_indices],
                           all_fathers[seen_test_indices])
 
-        with open('data/train_data', 'wb') as output:
+        with open(f'data/{args["--max-num-files"]}/train_data', 'wb') as output:
             pickle.dump(train_data, output)
-        with open('data/valid_data', 'wb') as output:
+        with open(f'data/{args["--max-num-files"]}/valid_data', 'wb') as output:
             pickle.dump(valid_data, output)
-        with open('data/seen_test_data', 'wb') as output:
+        with open(f'data/{args["--max-num-files"]}/seen_test_data', 'wb') as output:
             pickle.dump(seen_test_data, output)
-
 
         ### Build UnseenTest dataset
         unseen_test_data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in unseen_test_dirs]
@@ -201,11 +203,32 @@ def run(arguments) -> None:
             data_dirs=unseen_test_data_dirs,
             max_num_files=max_num_files,
         )
-        with open('data/unseen_test_data', 'wb') as output:
+        with open(f'data/{args["--max-num-files"]}/unseen_test_data', 'wb') as output:
             pickle.dump(unseen_test_data, output)
 
         logging.info("Finished computing data ...")
         logging.info("Now exiting program. Rerun with loading the data from memory...")
+
+        with open(f'data/{args["--max-num-files"]}/log.txt', "w") as compute_data_log:
+            compute_data_log.write(f"Train/Valid/Seen_test directories are:\n")
+            for data_dir in training_dirs:
+                compute_data_log.write(f"   {data_dir}\n")
+
+            compute_data_log.write("Unseen test directories are:\n")
+            for data_dir in unseen_test_dirs:
+                compute_data_log.write(f"   {data_dir}\n")
+
+            compute_data_log.write(
+                f"This has {len(get_data_files_from_directory(data_dirs, max_num_files))} files, from which I "
+                f"extracted samples (of length {hyperparameters['max_seq_length']}):\n "
+                f"   {len(train_indices)} training samples\n"
+                f"   {len(valid_indices)} validation samples\n"
+                f"   {len(seen_test_indices)} seen test samples\n"
+                f"   {len(unseen_test_data[0])} unseen test samples\n")
+
+            compute_data_log.write(f"Nodes vocabulary has size {len(vocab_nodes)}\n")
+            compute_data_log.write(f"Actions vocabulary has size {len(vocab_actions)}\n")
+
         exit(0)
 
     logging.info("Loading data into memory...")
@@ -248,6 +271,7 @@ def run(arguments) -> None:
         max_epochs=max_epochs,
         patience=patience,
         save_file=save_file,
+        args=args
     )
 
 

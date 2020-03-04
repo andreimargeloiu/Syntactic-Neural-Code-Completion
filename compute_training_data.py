@@ -18,25 +18,24 @@ from dataset import get_data_files_from_directory, build_vocab_from_data_dir, lo
 
 training_dirs = [
     'Bukkit',
-    # 'cassandra',
-    'clojure',
-    # 'dubbo',
-    # 'errorprone',
+    'cassandra',
+    'dubbo',
+    'errorprone',
     'grails-core',
     'guice',
     # 'hibernate-orm',
-    # 'jsoup',
     'junit4',
-    # 'kafka',
-    # 'libgdx',
+    'kafka',
+    'libgdx',
     'metrics',
     'okhttp',
     # 'spring-framework',
-    # 'tomcat'
+    'tomcat'
 ]
 
 unseen_test_dirs = [
-    'jsoup'
+    'jsoup',
+    'clojure'
 ]
 
 if __name__ == "__main__":
@@ -69,8 +68,6 @@ if __name__ == "__main__":
             print("%15s %11s %15s %15s %11s %15s" % (corpus_dir, file_count,\
                                                      len(vocab_actions), len(vocab_nodes),\
                                                      train_data[0].shape[0], datetime.now() - start_time))
-
-
 
 
             # print(f"  Loaded {train_data[0].shape[0]} training samples from {args['--train-data-dir']}.")
