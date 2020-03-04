@@ -25,7 +25,7 @@ training_dirs = [
     'grails-core',
     'guice',
     # 'hibernate-orm',
-    'jsoup',
+    # 'jsoup',
     'junit4',
     # 'kafka',
     # 'libgdx',
@@ -35,9 +35,9 @@ training_dirs = [
     # 'tomcat'
 ]
 
-# training_dirs = [
-#     'jsoup'
-# ]
+unseen_test_dirs = [
+    'jsoup'
+]
 
 if __name__ == "__main__":
     args = docopt(__doc__)

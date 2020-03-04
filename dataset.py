@@ -165,7 +165,7 @@ def tensorise_token_sequence(
 
 def load_data_from_dir(
         vocab_node: Vocabulary, vocab_action: Vocabulary,
-        length: int, data_dirs: str, max_num_files: Optional[int] = None
+        length: int, data_dirs: List[str], max_num_files: Optional[int] = None
 ):
     """
     Load and tensorise data.

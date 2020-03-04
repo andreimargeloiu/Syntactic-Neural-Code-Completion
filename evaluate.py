@@ -5,45 +5,53 @@ Usage:
 
 Options:
     -h --help                        Show this screen.
-    --max-num-files INT              Number of files to load.
+    --model=NAME                     The model version
+    --saved-data-dir=NAME            The path to the saved data.
     --debug                          Enable debug routines. [default: False]
     --trained-model=NAME             Path to trained model
-    --test-dir=NAME                  Path to training directory
 """
+import os
+import pickle
+
 from docopt import docopt
 from dpu_utils.utils import run_and_debug
 
 from dataset import load_data_from_dir, get_minibatch_iterator
-from model import SyntacticModelv2
+from model import SyntacticModelv2, SyntacticModelv1, SyntacticModelv3
 
 
-def run(arguments) -> None:
+def run(args) -> None:
+    print("Loading model ...")
+    if args['--model'] == 'v1':
+        model = SyntacticModelv1.restore(args["--trained-model"])
+    elif args['--model'] == "v2":
+        model = SyntacticModelv2.restore(args["--trained-model"])
+    elif args['--model'] == "v3":
+        model = SyntacticModelv3.restore(args["--trained-model"])
+
+    print(f"  Loaded trained model from {args['--trained-model']}.")
+
     print("Loading data ...")
-    model = SyntacticModelv2.restore(arguments["--trained-model"])
-    print(f"  Loaded trained model from {arguments['--trained-model']}.")
+    with open(os.path.join(args['--saved-data-dir'], 'seen_test_data'), 'rb') as input:
+        seen_test_data = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'unseen_test_data'), 'rb') as input:
+        unseen_test_data = pickle.load(input)
 
-    test_data_nodes, test_data_actions, _ = load_data_from_dir(
-        model.vocab_nodes,
-        model.vocab_actions,
-        length=model.hyperparameters["max_seq_length"],
-        data_dir=arguments["--test-dir"],
-        max_num_files=arguments.get("--max-num-files"),
-    )
-    print(
-        f"  Loaded {test_data_actions.shape[0]} test samples from {arguments['--test-dir']}."
-    )
+    print(f"  Loaded {seen_test_data[0].shape[0]} seen test samples.")
+    print(f"  Loaded {unseen_test_data[0].shape[0]} unseen test samples.")
 
-    test_loss, test_acc = model.run_one_epoch(
-        get_minibatch_iterator(
-            test_data_actions,
-            model.hyperparameters["batch_size"],
-            is_training=False,
-            drop_remainder=False,
-        ),
-        training=False,
-    )
-    print(f"Test:  Loss {test_loss:.4f}, Acc {test_acc:.3f}")
 
+    for dataset, name in zip([seen_test_data, unseen_test_data], ['seen_test_data', 'unseen_test_data']):
+        test_loss, test_acc = model.run_one_epoch(
+            get_minibatch_iterator(
+                dataset,
+                model.hyperparameters["batch_size"],
+                is_training=False,
+                drop_remainder=False,
+            ),
+            training=False,
+        )
+        print(f"{name}:  Loss {test_loss:.4f}, Acc {test_acc:.3f}")
 
 if __name__ == "__main__":
     args = docopt(__doc__)

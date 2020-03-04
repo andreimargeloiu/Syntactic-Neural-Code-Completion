@@ -38,7 +38,7 @@ from dpu_utils.utils import run_and_debug
 
 from dataset import build_vocab_from_data_dir, get_minibatch_iterator, load_data_from_dir
 from model import SyntacticModelv2, BaseModel, SyntacticModelv1, SyntacticModelv3
-from compute_training_data import training_dirs
+from compute_training_data import training_dirs, unseen_test_dirs
 
 
 def train(
@@ -136,13 +136,17 @@ def run(arguments) -> None:
         #### Make list of all training data directories
         data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in training_dirs]
 
-        logging.info("Computing data ...")
+        logging.info("Computing train/valid/test data ...")
         vocab_nodes, vocab_actions = build_vocab_from_data_dir(
             data_dirs=data_dirs,
             vocab_size=hyperparameters["max_vocab_size"],
             max_num_files=max_num_files,
         )
         logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
+
+
+
+        ### Build Train/Valid/SeenTest datasets
         all_nodes, all_actions, all_fathers = load_data_from_dir(
             vocab_nodes,
             vocab_actions,
@@ -150,20 +154,55 @@ def run(arguments) -> None:
             data_dirs=data_dirs,
             max_num_files=max_num_files,
         )
-        logging.info(f"  Built dataset of {all_nodes.shape[0]} training examples.")
-
+        logging.info(f"  Built dataset of {all_nodes.shape[0]} training/valid/test examples.")
         # Save data
         with open('data/vocab_nodes', 'wb') as output:
             pickle.dump(vocab_nodes, output)
         with open('data/vocab_actions', 'wb') as output:
             pickle.dump(vocab_actions, output)
-        with open('data/all_nodes', 'wb') as output:
-            pickle.dump(all_nodes, output)
-        with open('data/all_actions', 'wb') as output:
-            pickle.dump(all_actions, output)
-        with open('data/all_fathers', 'wb') as output:
-            pickle.dump(all_fathers, output)
 
+        # Shuffle and split data into train/valid/test
+        indices = np.arange(all_nodes.shape[0])
+        np.random.shuffle(indices)
+        ind_len = indices.shape[0]
+
+        train_indices = indices[:(int)(0.8 * ind_len)]
+        valid_indices = indices[(int)(0.8 * ind_len):(int)(0.9 * ind_len)]
+        seen_test_indices = indices[(int)(0.9 * ind_len):]
+
+        # Make the datasets
+        train_data = (all_nodes[train_indices],
+                      all_actions[train_indices],
+                      all_fathers[train_indices])
+        valid_data = (all_nodes[valid_indices],
+                      all_actions[valid_indices],
+                      all_fathers[valid_indices])
+        seen_test_data = (all_nodes[seen_test_indices],
+                          all_actions[seen_test_indices],
+                          all_fathers[seen_test_indices])
+
+        with open('data/train_data', 'wb') as output:
+            pickle.dump(train_data, output)
+        with open('data/valid_data', 'wb') as output:
+            pickle.dump(valid_data, output)
+        with open('data/seen_test_data', 'wb') as output:
+            pickle.dump(seen_test_data, output)
+
+
+        ### Build UnseenTest dataset
+        unseen_test_data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in unseen_test_dirs]
+        logging.info("Computing data ...")
+
+        ### Build Train/Valid/SeenTest datasets
+        unseen_test_data = load_data_from_dir(
+            vocab_nodes,
+            vocab_actions,
+            length=hyperparameters["max_seq_length"],
+            data_dirs=unseen_test_data_dirs,
+            max_num_files=max_num_files,
+        )
+        with open('data/unseen_test_data', 'wb') as output:
+            pickle.dump(unseen_test_data, output)
 
         logging.info("Finished computing data ...")
         logging.info("Now exiting program. Rerun with loading the data from memory...")
@@ -175,33 +214,10 @@ def run(arguments) -> None:
         vocab_nodes = pickle.load(input)
     with open(os.path.join(args['--saved-data-dir'], 'vocab_actions'), 'rb') as input:
         vocab_actions = pickle.load(input)
-    with open(os.path.join(args['--saved-data-dir'], 'all_nodes'), 'rb') as input:
-        all_nodes = pickle.load(input)
-    with open(os.path.join(args['--saved-data-dir'], 'all_actions'), 'rb') as input:
-        all_actions = pickle.load(input)
-    with open(os.path.join(args['--saved-data-dir'], 'all_fathers'), 'rb') as input:
-        all_fathers = pickle.load(input)
-
-
-    # Shuffle and split data into train/valid/test
-    indices = np.arange(all_nodes.shape[0])
-    np.random.shuffle(indices)
-    ind_len = indices.shape[0]
-
-    train_indices = indices[:(int)(0.8 * ind_len)]
-    valid_indices = indices[(int)(0.8 * ind_len):(int)(0.9 * ind_len)]
-    test_indices = indices[(int)(0.9 * ind_len):]
-
-    # Make the datasets
-    train_data = (all_nodes[train_indices],
-                  all_actions[train_indices],
-                  all_fathers[train_indices])
-    valid_data = (all_nodes[valid_indices],
-                  all_actions[valid_indices],
-                  all_fathers[valid_indices])
-    test_data = (all_nodes[test_indices],
-                 all_actions[test_indices],
-                 all_fathers[test_indices])
+    with open(os.path.join(args['--saved-data-dir'], 'train_data'), 'rb') as input:
+        train_data = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'valid_data'), 'rb') as input:
+        valid_data = pickle.load(input)
 
     logging.info(f"  Loaded {train_data[0].shape[0]} training samples.")
     logging.info(f"  Loaded {valid_data[0].shape[0]} validation samples.")

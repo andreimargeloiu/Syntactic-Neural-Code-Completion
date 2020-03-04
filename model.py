@@ -74,7 +74,8 @@ class BaseModel(tf.keras.Model):
         # and then the default TF weight saving.
         data_to_store = {
             "model_class": self.__class__.__name__,
-            "vocab": self.vocab_actions,
+            "vocab_nodes": self.vocab_nodes,
+            "vocab_actions": self.vocab_actions,
             "hyperparameters": self.hyperparameters,
         }
         with open(path, "wb") as out_file:
@@ -86,8 +87,10 @@ class BaseModel(tf.keras.Model):
         with open(saved_model_path, "rb") as fh:
             saved_data = pickle.load(fh)
 
-        model = cls(saved_data["hyperparameters"], saved_data["vocab"])
-        model.build(tf.TensorShape([None, None]))
+        model = cls(saved_data["hyperparameters"],
+                    saved_data["vocab_nodes"],
+                    saved_data["vocab_actions"])
+        model.build(tf.TensorShape([None, None, 3]))
         model.load_weights(saved_model_path)
         return model
 
@@ -275,7 +278,6 @@ class SyntacticModelv2(BaseModel):
                  vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
         super().__init__(hyperparameters, vocab_nodes, vocab_actions)
 
-
         # Parameters
         self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
                                          output_dim=self.hyperparameters['node_embedding_size'],
@@ -304,7 +306,7 @@ class SyntacticModelv2(BaseModel):
 
         # The input has shape (B, T, 3) because I stacked the node_tokes, action_tokens and fathers_ids
 
-        nodes_ids, actions_ids, fathers_ids = tf.split(inputs, 3, axis=2)  # (None, 50, 3)
+        nodes_ids, actions_ids, _ = tf.split(inputs, 3, axis=2)  # (None, 50, 3)
         nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
         actions_ids = tf.squeeze(actions_ids, axis=2)
 
@@ -342,8 +344,7 @@ class SyntacticModelv3(BaseModel):
 
     def __init__(self, hyperparameters: Dict[str, Any],
                  vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
-        super(BaseModel, self).__init__()
-
+        super().__init__(hyperparameters, vocab_nodes, vocab_actions)
 
         # Parameters
         self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
@@ -358,6 +359,20 @@ class SyntacticModelv3(BaseModel):
         self.gru2 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_2'], return_sequences=True)
         self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
 
+
+    def gather_batch(self, params, indices):
+        # TODO Issue because of this
+        """
+        ValueError: You cannot build your model by calling `build`
+        if your layers do not support float type inputs. Instead,
+        in order to instantiate and build your model, `call` your
+        model on real tensor data (of the correct dtype).
+        """
+        unstacked_params = tf.unstack(params, num=self.hyperparameters['batch_size'], axis=0)
+        unstacked_indices = tf.unstack(indices, num=self.hyperparameters['batch_size'], axis=0)
+        gathered = [tf.gather(x, y) for x, y in zip(unstacked_params, unstacked_indices)]
+        return tf.stack(gathered, axis=0)
+
     def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
         """
         Implements a language model, where each output is conditional on the current
@@ -371,20 +386,56 @@ class SyntacticModelv3(BaseModel):
             tf.float32 tensor of shape [B, T, V], storing the distribution over output symbols
             for each timestep for each batch element.
         """
-        # TODO, not completed
+        # The input has shape (B, T, 3) because I stacked the node_tokes, action_tokens, fathers_ids
+        nodes_ids, actions_ids, fathers_ids = tf.split(inputs, 3, axis=2)  # (None, 50, 3)
+        nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
+        actions_ids = tf.squeeze(actions_ids, axis=2)
+        fathers_ids = tf.squeeze(fathers_ids, axis=2)
 
-        # # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
-        # nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
-        # nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
-        # actions_ids = tf.squeeze(actions_ids, axis=2)
-        # # Get embeddings
-        # nodes_emb = self.nodes_embedding(nodes_ids)
-        # actions_emb = self.actions_embedding(actions_ids)
-        #
-        # # Forward pass
-        # gru1_output = self.gru1(tf.concat([nodes_emb, actions_emb], axis=2), training=training)
-        # parent_inputs = tf.gather(params=gru1_output, indices=parent_id) # TODO make parent_ID
-        # gru2_output = self.gru2(tf.concat([gru1_output, parent_inputs], axis=2), training=training)
-        # rnn_output_logits = self.dense(gru2_output)
+        # Get embeddings
+        nodes_emb = self.nodes_embedding(nodes_ids)
+        actions_emb = self.actions_embedding(actions_ids)
 
-        return None
+        # Forward pass
+        gru1_output = self.gru1(tf.concat([nodes_emb, actions_emb], axis=2), training=training)
+        print(gru1_output.shape)
+        print(fathers_ids.shape)
+
+        parent_inputs = self.gather_batch(params=gru1_output, indices=fathers_ids)
+        gru2_output = self.gru2(tf.concat([gru1_output, parent_inputs], axis=2), training=training)
+        rnn_output_logits = self.dense(gru1_output)
+
+        return rnn_output_logits
+
+    #
+    # def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
+    #     """
+    #     Implements a language model, where each output is conditional on the current
+    #     input and inputs processed so far.
+    #
+    #     Args:
+    #         inputs: int32 tensor of shape [B, T, 2], storing integer IDs of the Nodes and the Actions as a stacked tensor.
+    #         training: Flag indicating if we are currently training (used to toggle dropout)
+    #
+    #     Returns:
+    #         tf.float32 tensor of shape [B, T, V], storing the distribution over output symbols
+    #         for each timestep for each batch element.
+    #     """
+    #
+    #     # The input has shape (B, T, 3) because I stacked the node_tokes, action_tokens and fathers_ids
+    #
+    #     nodes_ids, actions_ids, _ = tf.split(inputs, 3, axis=2)  # (None, 50, 3)
+    #     nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
+    #     actions_ids = tf.squeeze(actions_ids, axis=2)
+    #
+    #     # Get embeddings
+    #     nodes_emb = self.nodes_embedding(nodes_ids)
+    #     actions_emb = self.actions_embedding(actions_ids)
+    #
+    #     # concat embeddings
+    #     concat_input = tf.concat([nodes_emb, actions_emb], axis=2)
+    #
+    #     cell_output = self.gru1(concat_input, training=training)
+    #     rnn_output_logits = self.dense(cell_output)
+    #
+    #     return rnn_output_logits

@@ -36,8 +36,9 @@ python train.py --model='v2'\
 
 Evaluate:
 ```
-python evaluate.py --trained-model="trained_models/RNNModel-2020-02-27-07-48-44_best_model.bin"\
-                   --test-dir="../corpus-features/jsoup/"
+python evaluate.py --trained-model="trained_models/RNNModel-2020-03-04-14-02-59_best_model.bin"\
+                   --saved-data-dir="./data"\
+                   --model="v2"
 ```
 
 Compute training data statistics:

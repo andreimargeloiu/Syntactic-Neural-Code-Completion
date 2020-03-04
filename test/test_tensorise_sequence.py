@@ -28,15 +28,15 @@ def find_first(item, vector):
 
 def run(arguments) -> None:
     vocab_nodes, vocab_actions = build_vocab_from_data_dir(
-        arguments["DATA_DIR"],
+        [arguments["DATA_DIR"]],
         vocab_size=500,
         max_num_files=arguments.get("--max-num-files"),
     )
-    tensorised_nodes, tensorised_actions = load_data_from_dir(
+    tensorised_nodes, tensorised_actions, _ = load_data_from_dir(
         vocab_nodes,
         vocab_actions,
         length=50,
-        data_dir=arguments["DATA_DIR"],
+        data_dirs=[arguments["DATA_DIR"]],
         max_num_files=arguments.get("--max-num-files"),
     )
 
