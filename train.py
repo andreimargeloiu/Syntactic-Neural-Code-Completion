@@ -13,6 +13,7 @@ Options:
     --log-file=NAME
     --save-dir=NAME                 Save the models path
     --compute-data                  Flag for computing the training data
+    --model=NAME                    Model type: v1, v2, v3
     --train-data-dir=NAME           Training directory path
     --saved-data-dir=NAME           Location of already computed data directory.
     --hypers-override HYPERS        JSON dictionary overriding hyperparameter values.
@@ -36,12 +37,12 @@ from docopt import docopt
 from dpu_utils.utils import run_and_debug
 
 from dataset import build_vocab_from_data_dir, get_minibatch_iterator, load_data_from_dir
-from model import SyntacticModel
+from model import SyntacticModelv2, BaseModel, SyntacticModelv1, SyntacticModelv3
 from compute_training_data import training_dirs
 
 
 def train(
-        model: SyntacticModel,
+        model: BaseModel,
         train_data: Tuple[np.ndarray, np.ndarray],
         valid_data: Tuple[np.ndarray, np.ndarray],
         batch_size: int,
@@ -110,7 +111,13 @@ def train(
 
 
 def run(arguments) -> None:
-    hyperparameters = SyntacticModel.get_default_hyperparameters()
+    if args['--model'] == 'v1':
+        hyperparameters = SyntacticModelv1.get_default_hyperparameters()
+    elif args['--model'] == 'v2':
+        hyperparameters = SyntacticModelv2.get_default_hyperparameters()
+    elif args['--model'] == 'v3':
+        hyperparameters = SyntacticModelv3.get_default_hyperparameters()
+
     hyperparameters["run_id"] = make_run_id(arguments)
     max_epochs = int(arguments.get("--max-num-epochs"))
     patience = int(arguments.get("--patience"))
@@ -121,19 +128,13 @@ def run(arguments) -> None:
     if hypers_override is not None:
         hyperparameters.update(json.loads(hypers_override))
 
-    save_model_dir = args["--save-dir"]
-    os.makedirs(save_model_dir, exist_ok=True)
-    save_file = os.path.join(
-        save_model_dir, f"{hyperparameters['run_id']}_best_model.bin"
-    )
-
-    #### Make list of all training data directories
-    data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in training_dirs]
-
     if args['--compute-data']:
         """
         Create and save the training data
         """
+        #### Make list of all training data directories
+        data_dirs = [os.path.join(args["--train-data-dir"], data_dir) for data_dir in training_dirs]
+
         logging.info("Computing data ...")
         vocab_nodes, vocab_actions = build_vocab_from_data_dir(
             data_dirs=data_dirs,
@@ -164,7 +165,6 @@ def run(arguments) -> None:
         logging.info("Now exiting program. Rerun with loading the data from memory...")
         exit(0)
 
-
     logging.info("Loading data into memory...")
     ### Load data
     with open(os.path.join(args['--saved-data-dir'], 'vocab_nodes'), 'rb') as input:
@@ -175,7 +175,6 @@ def run(arguments) -> None:
         all_nodes = pickle.load(input)
     with open(os.path.join(args['--saved-data-dir'], 'all_actions'), 'rb') as input:
         all_actions = pickle.load(input)
-
 
     # Shuffle and split data into train/valid/test
     indices = np.arange(all_nodes.shape[0])
@@ -192,18 +191,29 @@ def run(arguments) -> None:
     valid_data = (all_nodes[valid_indices],
                   all_actions[valid_indices])
     test_data = (all_nodes[test_indices],
-                  all_actions[test_indices])
+                 all_actions[test_indices])
 
     logging.info(f"  Loaded {train_data[0].shape[0]} training samples.")
     logging.info(f"  Loaded {valid_data[0].shape[0]} validation samples.")
 
 
-
     # Construct model
-    model = SyntacticModel(hyperparameters, vocab_nodes, vocab_actions)
+    if args['--model'] == 'v1':
+        model = SyntacticModelv1(hyperparameters, vocab_nodes, vocab_actions)
+    elif args['--model'] == 'v2':
+        model = SyntacticModelv2(hyperparameters, vocab_nodes, vocab_actions)
+    elif args['--model'] == 'v3':
+        model = SyntacticModelv3(hyperparameters, vocab_nodes, vocab_actions)
     model.build(([None, hyperparameters["max_seq_length"], 2]))
     logging.info("Constructed model, using the following hyperparameters:")
     logging.info(json.dumps(hyperparameters))
+
+    # Peth for saving the model
+    save_model_dir = args["--save-dir"]
+    os.makedirs(save_model_dir, exist_ok=True)
+    save_file = os.path.join(
+        save_model_dir, f"{hyperparameters['run_id']}_best_model.bin"
+    )
 
     train(
         model,
@@ -237,7 +247,6 @@ if __name__ == "__main__":
     tf.random.set_seed(0)
     random.seed(0)
     np.random.seed(0)
-
 
     # Logging configuration
     logging.basicConfig(level=logging.DEBUG,

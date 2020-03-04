@@ -1,6 +1,6 @@
 """
 Usage:
-    read_training_data.py [options]
+    compute_training_data.py [options]
 
 *_DATA_DIR are directories filled with files that we use as data.
 

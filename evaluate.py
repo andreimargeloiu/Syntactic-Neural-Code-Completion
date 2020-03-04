@@ -14,12 +14,12 @@ from docopt import docopt
 from dpu_utils.utils import run_and_debug
 
 from dataset import load_data_from_dir, get_minibatch_iterator
-from model import SyntacticModel
+from model import SyntacticModelv2
 
 
 def run(arguments) -> None:
     print("Loading data ...")
-    model = SyntacticModel.restore(arguments["--trained-model"])
+    model = SyntacticModelv2.restore(arguments["--trained-model"])
     print(f"  Loaded trained model from {arguments['--trained-model']}.")
 
     test_data_nodes, test_data_actions = load_data_from_dir(

@@ -2,7 +2,7 @@ Adaptation of the paper [A Syntactic Neural Model for General-Purpose Code Gener
 
 To visualise the AST of a .java file:
 ```
-.scripts/sh_compile_ans_visualise.sh -v -- ../test/Example.java
+./scripts/sh_compile_and_visualise.sh -v -- ./test/Example.java
 ```
 
 Tests/Debug:
@@ -13,17 +13,25 @@ python ./test/test_compute_grammar.py --max-num-file=10 ../../corpus-features/js
 python ./test/test_compute_vocabulary.py --max-num-file=10 ./test
 ```
 
-Train:
+Compute data:
 ```
-python train.py --save-dir="./trained_models"\
+python train.py --compute-data\
                 --saved-data-dir="./data"\
                 --train-data-dir="../corpus-features"\
+                --log-file="./logs/training.log"\
+                --tensorboard-logs-path="./logs_tensorboard"\
+                --max-num-files 250
+```
+
+Train:
+```
+python train.py --model='v2'\
+                --save-dir="./trained_models"\
+                --saved-data-dir="./data"\
                 --log-file='./logs/training.log'\
                 --tensorboard-logs-path="./logs_tensorboard"\
                 --max-num-epochs 100\
-                --patience 5\
-                --max-num-files 250\
-                --compute-data
+                --patience 5
 ```
 
 Evaluate:

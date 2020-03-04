@@ -339,3 +339,5 @@ extractor/target/*
 test_outputs/*
 
 trained_models/
+logs_tensorboard/
+logs/

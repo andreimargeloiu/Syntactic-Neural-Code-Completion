@@ -17,9 +17,10 @@ class LanguageModelLoss(NamedTuple):
     num_correct_token_predictions: tf.Tensor
 
 
-class SyntacticModel(tf.keras.Model):
+class BaseModel(tf.keras.Model):
     @classmethod
     def get_default_hyperparameters(cls) -> Dict[str, Any]:
+        """Get the default hyperparameter dictionary for the class."""
         return {
             "optimizer": "Adam",  # One of "SGD", "RMSProp", "Adam"
             "learning_rate": 0.01,
@@ -30,33 +31,16 @@ class SyntacticModel(tf.keras.Model):
             "patience": 5,
             "max_vocab_size": 10000,
             "max_seq_length": 50,
-            "batch_size": 128,
-            "node_embedding_size": 32,
-            "action_embedding_size": 64,
-            "token_embedding_size": 64,
-            "rnn_hidden_dim_1": 64,
-            "rnn_hidden_dim_2": 64,
+            "batch_size": 128
         }
 
     def __init__(self, hyperparameters: Dict[str, Any],
                  vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
-        super(SyntacticModel, self).__init__()
+        super().__init__()
 
         self.hyperparameters = hyperparameters
         self.vocab_nodes = vocab_nodes
         self.vocab_actions = vocab_actions
-
-        # Parameters
-        self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
-                                         output_dim=self.hyperparameters['node_embedding_size'],
-                                         input_length=self.hyperparameters['max_seq_length'])
-
-        self.actions_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
-                                           output_dim=self.hyperparameters['action_embedding_size'],
-                                           input_length=self.hyperparameters['max_seq_length'])
-
-        self.gru1 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_1'], return_sequences=True)
-        self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
 
         # Also prepare optimizer:
         optimizer_name = self.hyperparameters["optimizer"].lower()
@@ -118,34 +102,9 @@ class SyntacticModel(tf.keras.Model):
 
     def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
         """
-        Implements a language model, where each output is conditional on the current
-        input and inputs processed so far.
-
-        Args:
-            inputs: int32 tensor of shape [B, T, 2], storing integer IDs of the Nodes and the Actions as a stacked tensor.
-            training: Flag indicating if we are currently training (used to toggle dropout)
-
-        Returns:
-            tf.float32 tensor of shape [B, T, V], storing the distribution over output symbols
-            for each timestep for each batch element.
+        Implemented in Subclasses
         """
-
-        # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
-        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
-        nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
-        actions_ids = tf.squeeze(actions_ids, axis=2)
-
-        # Get embeddings
-        nodes_emb = self.nodes_embedding(nodes_ids)
-        actions_emb = self.actions_embedding(actions_ids)
-
-        # concat embeddings
-        concat_input = tf.concat([nodes_emb, actions_emb], axis=2)
-
-        cell_output = self.gru1(concat_input, training=training)
-        rnn_output_logits = self.dense(cell_output)
-
-        return rnn_output_logits
+        return None
 
     def compute_loss_and_acc(
             self, rnn_output_logits: tf.Tensor, target_token_seq: tf.Tensor
@@ -239,3 +198,192 @@ class SyntacticModel(tf.keras.Model):
             total_loss / num_samples,
             num_correct_tokens / (float(num_tokens) + 1e-7),
         )
+
+
+class SyntacticModelv1(BaseModel):
+    """
+    GRU. Input: Previous action
+    """
+
+    @classmethod
+    def get_default_hyperparameters(cls) -> Dict[str, Any]:
+        """Get the default hyperparameter dictionary for the class."""
+        super_params = super().get_default_hyperparameters()
+        these_params = {
+            "action_embedding_size": 64,
+            "rnn_hidden_dim_1": 64
+        }
+        super_params.update(these_params)
+        return super_params
+
+    def __init__(self, hyperparameters: Dict[str, Any],
+                 vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
+        super().__init__(hyperparameters, vocab_nodes, vocab_actions)
+
+
+        self.actions_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                           output_dim=self.hyperparameters['action_embedding_size'],
+                                           input_length=self.hyperparameters['max_seq_length'])
+
+        self.gru1 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_1'], return_sequences=True)
+        self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
+
+    def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
+        """
+        Implements a language model, where each output is conditional on the current
+        input and inputs processed so far.
+
+        Args:
+            inputs: int32 tensor of shape [B, T, 2], storing integer IDs of the Nodes and the Actions as a stacked tensor.
+            training: Flag indicating if we are currently training (used to toggle dropout)
+
+        Returns:
+            tf.float32 tensor of shape [B, T, V], storing the distribution over output symbols
+            for each timestep for each batch element.
+        """
+
+        # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
+        # In this model I use only the previous action.
+        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
+        actions_ids = tf.squeeze(actions_ids, axis=2)
+
+        actions_emb = self.actions_embedding(actions_ids)
+
+        cell_output = self.gru1(actions_emb, training=training)
+        rnn_output_logits = self.dense(cell_output)
+
+        return rnn_output_logits
+
+
+class SyntacticModelv2(BaseModel):
+    """
+        GRU. Input: Previous action, previous node
+    """
+    @classmethod
+    def get_default_hyperparameters(cls) -> Dict[str, Any]:
+        """Get the default hyperparameter dictionary for the class."""
+        super_params = super().get_default_hyperparameters()
+        these_params = {
+            "node_embedding_size": 32,
+            "action_embedding_size": 64,
+            "rnn_hidden_dim_1": 64
+        }
+        super_params.update(these_params)
+        return super_params
+
+    def __init__(self, hyperparameters: Dict[str, Any],
+                 vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
+        super().__init__(hyperparameters, vocab_nodes, vocab_actions)
+
+
+        # Parameters
+        self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                         output_dim=self.hyperparameters['node_embedding_size'],
+                                         input_length=self.hyperparameters['max_seq_length'])
+
+        self.actions_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                           output_dim=self.hyperparameters['action_embedding_size'],
+                                           input_length=self.hyperparameters['max_seq_length'])
+
+        self.gru1 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_1'], return_sequences=True)
+        self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
+
+    def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
+        """
+        Implements a language model, where each output is conditional on the current
+        input and inputs processed so far.
+
+        Args:
+            inputs: int32 tensor of shape [B, T, 2], storing integer IDs of the Nodes and the Actions as a stacked tensor.
+            training: Flag indicating if we are currently training (used to toggle dropout)
+
+        Returns:
+            tf.float32 tensor of shape [B, T, V], storing the distribution over output symbols
+            for each timestep for each batch element.
+        """
+
+        # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
+        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
+        nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
+        actions_ids = tf.squeeze(actions_ids, axis=2)
+
+        # Get embeddings
+        nodes_emb = self.nodes_embedding(nodes_ids)
+        actions_emb = self.actions_embedding(actions_ids)
+
+        # concat embeddings
+        concat_input = tf.concat([nodes_emb, actions_emb], axis=2)
+
+        cell_output = self.gru1(concat_input, training=training)
+        rnn_output_logits = self.dense(cell_output)
+
+        return rnn_output_logits
+
+
+class SyntacticModelv3(BaseModel):
+    """
+    GRU. Input: Previous action, previous node, parent embedding and state
+    """
+
+    @classmethod
+    def get_default_hyperparameters(cls) -> Dict[str, Any]:
+        """Get the default hyperparameter dictionary for the class."""
+        super_params = super().get_default_hyperparameters()
+        these_params = {
+            "node_embedding_size": 32,
+            "action_embedding_size": 64,
+            "rnn_hidden_dim_1": 64,
+            "rnn_hidden_dim_2": 64,
+        }
+        super_params.update(these_params)
+        return super_params
+
+
+    def __init__(self, hyperparameters: Dict[str, Any],
+                 vocab_nodes: Vocabulary, vocab_actions: Vocabulary) -> None:
+        super(BaseModel, self).__init__()
+
+
+        # Parameters
+        self.nodes_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                         output_dim=self.hyperparameters['node_embedding_size'],
+                                         input_length=self.hyperparameters['max_seq_length'])
+
+        self.actions_embedding = Embedding(input_dim=self.hyperparameters['max_vocab_size'],
+                                           output_dim=self.hyperparameters['action_embedding_size'],
+                                           input_length=self.hyperparameters['max_seq_length'])
+
+        self.gru1 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_1'], return_sequences=True)
+        self.gru2 = tf.keras.layers.GRU(self.hyperparameters['rnn_hidden_dim_2'], return_sequences=True)
+        self.dense = tf.keras.layers.Dense(self.hyperparameters['max_vocab_size'])
+
+    def compute_logits(self, inputs: tf.Tensor, training: bool) -> tf.Tensor:
+        """
+        Implements a language model, where each output is conditional on the current
+        input and inputs processed so far.
+
+        Args:
+            inputs: int32 tensor of shape [B, T, 2], storing integer IDs of the Nodes and the Actions as a stacked tensor.
+            training: Flag indicating if we are currently training (used to toggle dropout)
+
+        Returns:
+            tf.float32 tensor of shape [B, T, V], storing the distribution over output symbols
+            for each timestep for each batch element.
+        """
+        # TODO, not completed
+
+        # # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
+        # nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
+        # nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
+        # actions_ids = tf.squeeze(actions_ids, axis=2)
+        # # Get embeddings
+        # nodes_emb = self.nodes_embedding(nodes_ids)
+        # actions_emb = self.actions_embedding(actions_ids)
+        #
+        # # Forward pass
+        # gru1_output = self.gru1(tf.concat([nodes_emb, actions_emb], axis=2), training=training)
+        # parent_inputs = tf.gather(params=gru1_output, indices=parent_id) # TODO make parent_ID
+        # gru2_output = self.gru2(tf.concat([gru1_output, parent_inputs], axis=2), training=training)
+        # rnn_output_logits = self.dense(gru2_output)
+
+        return None
