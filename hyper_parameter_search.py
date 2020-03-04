@@ -29,7 +29,7 @@ if __name__ == "__main__":
     print("Started")
 
     args = docopt(__doc__)
-    args['--max-num-epochs'] = 2
+    args['--max-num-epochs'] = 10
     args['--patience'] = 10
 
     with open(os.path.join(args['--log-file-hyperparams'], 'hyper_params.log'), 'a') as log_file_hyper_params:
