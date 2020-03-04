@@ -25,19 +25,16 @@ if __name__ == '__main__':
     # hte path is relative to where you called the file from
     with open('./test_outputs/action_sequence.txt', 'w') as output:
         data_files = get_data_files_from_directory(
-            args["CORPUS_DATA_DIR"],
+            [args["CORPUS_DATA_DIR"]],
             max_num_files = args.get("--max-num-files")
         )
         for i, file_path in enumerate(data_files):
             print(f"{i}:  Processing {file_path}")
-            action_lists, node_lists = load_data_file(file_path, as_string=True)
+            action_lists, node_lists, fathers_lists = load_data_file(file_path, as_string=True)
 
             output.write(f"----{file_path}\n")
             for i in range(len(action_lists)):
                 for j in range(len(action_lists[i])):
-                    output.write("%-20s  |  " % node_lists[i][j])
-                    output.write(action_lists[i][j])
-                    output.write('\n')
-
+                    output.write("Pos:%4d | Father:%4d | %-20s  |  %-30s \n" % (j, fathers_lists[i][j], node_lists[i][j], action_lists[i][j]))
 
                 output.write("\n")

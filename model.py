@@ -161,12 +161,12 @@ class BaseModel(tf.keras.Model):
         return next_tok_probs.numpy()
 
     def run_one_epoch(
-            self, minibatches: Tuple[Iterable[np.ndarray], Iterable[np.ndarray]], training: bool = False,
+            self, minibatches: Tuple[Iterable[np.ndarray], Iterable[np.ndarray], Iterable[np.ndarray]], training: bool = False,
     ):
         total_loss, num_samples, num_tokens, num_correct_tokens = 0.0, 0, 0, 0
-        for step, (minibatch_nodes, minibatch_actions) in enumerate(minibatches):
+        for step, (minibatch_nodes, minibatch_actions, minibatch_fathers) in enumerate(minibatches):
             with tf.GradientTape() as tape:
-                model_outputs = self.compute_logits(tf.stack([minibatch_nodes, minibatch_actions], axis=2),
+                model_outputs = self.compute_logits(tf.stack([minibatch_nodes, minibatch_actions, minibatch_fathers], axis=2),
                                                     training=training)
 
                 result = self.compute_loss_and_acc(model_outputs, minibatch_actions)
@@ -244,7 +244,7 @@ class SyntacticModelv1(BaseModel):
 
         # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
         # In this model I use only the previous action.
-        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
+        nodes_ids, actions_ids, fathers_ids = tf.split(inputs, 3, axis=2)  # (None, 50, 3)
         actions_ids = tf.squeeze(actions_ids, axis=2)
 
         actions_emb = self.actions_embedding(actions_ids)
@@ -302,8 +302,9 @@ class SyntacticModelv2(BaseModel):
             for each timestep for each batch element.
         """
 
-        # The input has shape (B, T, 2) because I stacked the node_tokes and action_tokens
-        nodes_ids, actions_ids = tf.split(inputs, 2, axis=2)  # (None, 50, 2)
+        # The input has shape (B, T, 3) because I stacked the node_tokes, action_tokens and fathers_ids
+
+        nodes_ids, actions_ids, fathers_ids = tf.split(inputs, 3, axis=2)  # (None, 50, 3)
         nodes_ids = tf.squeeze(nodes_ids, axis=2)  # (None, 50)
         actions_ids = tf.squeeze(actions_ids, axis=2)
 

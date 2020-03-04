@@ -43,7 +43,7 @@ from compute_training_data import training_dirs
 
 def train(
         model: BaseModel,
-        train_data: Tuple[np.ndarray, np.ndarray],
+        train_data: Tuple[np.ndarray, np.ndarray, np.ndarray],
         valid_data: Tuple[np.ndarray, np.ndarray],
         batch_size: int,
         max_epochs: int,
@@ -111,6 +111,7 @@ def train(
 
 
 def run(arguments) -> None:
+    hyperparameters = BaseModel.get_default_hyperparameters()
     if args['--model'] == 'v1':
         hyperparameters = SyntacticModelv1.get_default_hyperparameters()
     elif args['--model'] == 'v2':
@@ -142,7 +143,7 @@ def run(arguments) -> None:
             max_num_files=max_num_files,
         )
         logging.info(f"  Built vocabulary of {len(vocab_actions)} entries.")
-        all_nodes, all_actions = load_data_from_dir(
+        all_nodes, all_actions, all_fathers = load_data_from_dir(
             vocab_nodes,
             vocab_actions,
             length=hyperparameters["max_seq_length"],
@@ -160,6 +161,9 @@ def run(arguments) -> None:
             pickle.dump(all_nodes, output)
         with open('data/all_actions', 'wb') as output:
             pickle.dump(all_actions, output)
+        with open('data/all_fathers', 'wb') as output:
+            pickle.dump(all_fathers, output)
+
 
         logging.info("Finished computing data ...")
         logging.info("Now exiting program. Rerun with loading the data from memory...")
@@ -175,6 +179,9 @@ def run(arguments) -> None:
         all_nodes = pickle.load(input)
     with open(os.path.join(args['--saved-data-dir'], 'all_actions'), 'rb') as input:
         all_actions = pickle.load(input)
+    with open(os.path.join(args['--saved-data-dir'], 'all_fathers'), 'rb') as input:
+        all_fathers = pickle.load(input)
+
 
     # Shuffle and split data into train/valid/test
     indices = np.arange(all_nodes.shape[0])
@@ -187,15 +194,17 @@ def run(arguments) -> None:
 
     # Make the datasets
     train_data = (all_nodes[train_indices],
-                  all_actions[train_indices])
+                  all_actions[train_indices],
+                  all_fathers[train_indices])
     valid_data = (all_nodes[valid_indices],
-                  all_actions[valid_indices])
+                  all_actions[valid_indices],
+                  all_fathers[valid_indices])
     test_data = (all_nodes[test_indices],
-                 all_actions[test_indices])
+                 all_actions[test_indices],
+                 all_fathers[test_indices])
 
     logging.info(f"  Loaded {train_data[0].shape[0]} training samples.")
     logging.info(f"  Loaded {valid_data[0].shape[0]} validation samples.")
-
 
     # Construct model
     if args['--model'] == 'v1':
@@ -204,7 +213,7 @@ def run(arguments) -> None:
         model = SyntacticModelv2(hyperparameters, vocab_nodes, vocab_actions)
     elif args['--model'] == 'v3':
         model = SyntacticModelv3(hyperparameters, vocab_nodes, vocab_actions)
-    model.build(([None, hyperparameters["max_seq_length"], 2]))
+    model.build(([None, hyperparameters["max_seq_length"], 3]))
     logging.info("Constructed model, using the following hyperparameters:")
     logging.info(json.dumps(hyperparameters))
 

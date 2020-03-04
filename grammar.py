@@ -109,23 +109,39 @@ class TreeNode:
 
             return Rule(self.contents, children_contents)
 
-    def to_action_sequence(self, as_string=False) -> List[Rule]:
+    def to_action_sequence(self, as_string=False, return_fathers=True, position=0, father=0):
         """
         Decompose the subtree into a sequence of actions.
+
+        :return_fathers: for each action, return the father from which is was split.
+            e.g: 1->2, 1->3, 2->4. The fathers are 1, 1, 1, 2
         """
         if self.is_leaf:
-            return []
+            if return_fathers:
+                return [], []
+            else:
+                return []
 
         actions = [self.get_node_rule()]
+        fathers = [father]
 
         # Expansion of rules of children
         for child in self.children:
-            actions.extend(child.to_action_sequence())
+            child_actions, child_fathers = child.to_action_sequence(as_string=as_string,
+                                                                    return_fathers=return_fathers,
+                                                                    position=position + len(actions),
+                                                                    father=position)
+
+            actions.extend(child_actions)
+            fathers.extend(child_fathers)
 
         if as_string:
             actions = list(map(str, actions))
 
-        return actions
+        if return_fathers:
+            return actions, fathers
+        else:
+            return actions
 
     def to_action_sequence_and_nodes(self, as_string=False):
         """
@@ -134,14 +150,14 @@ class TreeNode:
            2. Sequence of nodes for this subtree
         """
 
-        actions = self.to_action_sequence(as_string=False)  # get the sequence of actions as Rule (not string)
-        nodes = list(map(lambda x: x.parent, actions))      # get list of the split nodes of the action sequence
+        actions, fathers = self.to_action_sequence(as_string=False, return_fathers=True)  # get the sequence of actions as Rule (not string)
+        nodes = list(map(lambda x: x.parent, actions))  # get list of the split nodes of the action sequence
 
         if as_string:
             actions = list(map(str, actions))
             nodes = list(map(str, nodes))
 
-        return actions, nodes
+        return actions, nodes, fathers
 
     @staticmethod
     def from_graph(g: Graph):
@@ -216,7 +232,7 @@ class Grammar:
                 g.ParseFromString(f.read())
 
                 root = TreeNode.from_graph(g)
-                for rule in root.to_action_sequence():
+                for rule, _ in root.to_action_sequence(return_fathers=False):
                     grammar.rules.add(rule)
 
         return grammar
@@ -263,7 +279,7 @@ def modify_startend_positions(node_id, nodes_dict, edges_dict):
     end_position = -1
 
     for edge in edges_dict[node_id]:
-        if edge.destinationId <= node_id: # prevent infinite loop, because the AST children have higher ID
+        if edge.destinationId <= node_id:  # prevent infinite loop, because the AST children have higher ID
             continue
 
         child_start, child_end = modify_startend_positions(edge.destinationId, nodes_dict, edges_dict)

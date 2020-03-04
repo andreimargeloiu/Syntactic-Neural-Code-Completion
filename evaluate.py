@@ -22,7 +22,7 @@ def run(arguments) -> None:
     model = SyntacticModelv2.restore(arguments["--trained-model"])
     print(f"  Loaded trained model from {arguments['--trained-model']}.")
 
-    test_data_nodes, test_data_actions = load_data_from_dir(
+    test_data_nodes, test_data_actions, _ = load_data_from_dir(
         model.vocab_nodes,
         model.vocab_actions,
         length=model.hyperparameters["max_seq_length"],

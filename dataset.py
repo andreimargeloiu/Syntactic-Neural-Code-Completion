@@ -68,13 +68,14 @@ def load_data_file(file_path: str, as_string=True) -> (Iterable[List[str]], Iter
         root = TreeNode.from_graph(g)
         method_nodes = get_methods_action_sequences(root)
 
-        actions_list, nodes_list = [], []
+        actions_list, nodes_list, fathers_list = [], [], []
         for node in method_nodes:
-            actions, nodes = node.to_action_sequence_and_nodes(as_string=as_string)
+            actions, nodes, fathers = node.to_action_sequence_and_nodes(as_string=as_string)
             actions_list.append(actions)
             nodes_list.append(nodes)
+            fathers_list.append(fathers)
 
-        return actions_list, nodes_list
+        return actions_list, nodes_list, fathers_list
 
 
 def build_vocab_from_data_dir(data_dirs: str, vocab_size: int, max_num_files: Optional[int]) \
@@ -97,9 +98,9 @@ def build_vocab_from_data_dir(data_dirs: str, vocab_size: int, max_num_files: Op
     # Count actions and nodes
     counter_nodes, counter_actions = Counter(), Counter()
     for i, file_path in enumerate(data_files):  # for each file, count all tokens
-        action_lists, node_lists = load_data_file(file_path, as_string=True)
+        action_lists, node_lists, _ = load_data_file(file_path, as_string=True)
 
-        if i%50 == 0:
+        if i % 50 == 0:
             print(f"Loaded the {i}th file for building vocabulary")
 
         for action_sequence, node_sequence in zip(action_lists, node_lists):
@@ -127,8 +128,8 @@ def build_grammar_from_data_dir(data_dir: str, max_num_files: Optional[int] = No
 
 def tensorise_token_sequence(
         vocab_nodes: Vocabulary, vocab_actions: Vocabulary, length: int,
-        actions_seq: Iterable[str], nodes_seq: Iterable[str],
-) -> List[int]:
+        actions_seq: Iterable[str], nodes_seq: Iterable[str], fathers_seq: Iterable[str],
+) -> Tuple[List[int], List[int], List[str]]:
     """
     Tensorise a single example (Transform the token sequence into a sequence of IDs of fixed length)
 
@@ -155,13 +156,17 @@ def tensorise_token_sequence(
     end_position = min(1 + len(nodes_seq), length - 1)
     nodes_ids[end_position] = vocab_nodes.get_id_or_unk(END_SYMBOL)
 
-    return nodes_ids, actions_ids
+    ###Extend fathers_list ot have length
+    fathers_seq.extend([0] * (length - len(fathers_seq)))
+    fathers_seq = fathers_seq[:length]
+
+    return nodes_ids, actions_ids, fathers_seq
 
 
 def load_data_from_dir(
         vocab_node: Vocabulary, vocab_action: Vocabulary,
         length: int, data_dirs: str, max_num_files: Optional[int] = None
-) -> Tuple[np.ndarray, np.ndarray]:
+):
     """
     Load and tensorise data.
 
@@ -177,27 +182,29 @@ def load_data_from_dir(
     """
     data_files = get_data_files_from_directory(data_dirs, max_num_files)
 
-    tensorised_actions = []
-    tensorised_nodes = []
+    tensorised_actions, tensorised_nodes, tensorised_fathers = [], [], []
     for i, data_file in enumerate(data_files):
-        actions_seq, nodes_seq = load_data_file(data_file)
+        actions_seq, nodes_seq, fathers_seq = load_data_file(data_file)
 
-        if i%50 == 0:
+        if i % 50 == 0:
             print(f"Loaded the {i}th file for building the training data")
 
-        for action_seq, node_seq in zip(actions_seq, nodes_seq):
-            nodes_seq_tensorised, actions_seq_tensorised = \
-                tensorise_token_sequence(vocab_node, vocab_action, length, action_seq, node_seq)
+        for action_seq, node_seq, father_seq in zip(actions_seq, nodes_seq, fathers_seq):
+            nodes_seq_tensorised, actions_seq_tensorised, fathers_tensorised = \
+                tensorise_token_sequence(vocab_node, vocab_action, length,
+                                         action_seq, node_seq, father_seq)
 
             tensorised_nodes.append(nodes_seq_tensorised)
             tensorised_actions.append(actions_seq_tensorised)
+            tensorised_fathers.append(fathers_tensorised)
 
     return np.array(tensorised_nodes, dtype=np.int32), \
-           np.array(tensorised_actions, dtype=np.int32)
+           np.array(tensorised_actions, dtype=np.int32), \
+           np.array(tensorised_fathers, dtype=np.int32)
 
 
 def get_minibatch_iterator(
-        token_seqs_tuple: Tuple[np.ndarray, np.ndarray],
+        token_seqs_tuple: Tuple[np.ndarray, np.ndarray, np.ndarray],
         batch_size: int,
         is_training: bool,
         drop_remainder: bool = True
@@ -216,4 +223,5 @@ def get_minibatch_iterator(
 
         nodes_minibatch_seqs = token_seqs_tuple[0][minibatch_indices]
         actions_minibatch_seqs = token_seqs_tuple[1][minibatch_indices]
-        yield nodes_minibatch_seqs, actions_minibatch_seqs
+        fathers_minibatch_seqs = token_seqs_tuple[2][minibatch_indices]
+        yield nodes_minibatch_seqs, actions_minibatch_seqs, fathers_minibatch_seqs
