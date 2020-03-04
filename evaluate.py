@@ -32,22 +32,23 @@ def evaluate(args) -> list:
     print(f"  Loaded trained model from {args['--trained-model']}.")
 
     print("Loading data ...")
-    with open(os.path.join(args['--saved-data-dir'], 'train_data'), 'rb') as input:
-        train_data = pickle.load(input)
+    # with open(os.path.join(args['--saved-data-dir'], 'train_data'), 'rb') as input:
+    #     train_data = pickle.load(input)
+    # print(f"  Loaded {train_data[0].shape[0]} training samples.")
     with open(os.path.join(args['--saved-data-dir'], 'valid_data'), 'rb') as input:
         valid_data = pickle.load(input)
-    with open(os.path.join(args['--saved-data-dir'], 'seen_test_data'), 'rb') as input:
-        seen_test_data = pickle.load(input)
-    with open(os.path.join(args['--saved-data-dir'], 'unseen_test_data'), 'rb') as input:
-        unseen_test_data = pickle.load(input)
-
-    print(f"  Loaded {train_data[0].shape[0]} training samples.")
     print(f"  Loaded {valid_data[0].shape[0]} validation samples.")
-    print(f"  Loaded {seen_test_data[0].shape[0]} seen test samples.")
-    print(f"  Loaded {unseen_test_data[0].shape[0]} unseen test samples.")
+    # with open(os.path.join(args['--saved-data-dir'], 'seen_test_data'), 'rb') as input:
+    #     seen_test_data = pickle.load(input)
+    # print(f"  Loaded {seen_test_data[0].shape[0]} seen test samples.")
+    # with open(os.path.join(args['--saved-data-dir'], 'unseen_test_data'), 'rb') as input:
+    #     unseen_test_data = pickle.load(input)
+    # print(f"  Loaded {unseen_test_data[0].shape[0]} unseen test samples.")
+
 
     accs = []
-    for dataset, name in zip([train_data, valid_data, seen_test_data, unseen_test_data], ['train_data', 'valid_data', 'seen_test_data', 'unseen_test_data']):
+    for dataset, name in zip([valid_data], ['valid_data']):
+    # for dataset, name in zip([train_data, valid_data, seen_test_data, unseen_test_data], ['train_data', 'valid_data', 'seen_test_data', 'unseen_test_data']):
         test_loss, test_acc = model.run_one_epoch(
             get_minibatch_iterator(
                 dataset,

@@ -29,7 +29,7 @@ if __name__ == "__main__":
     print("Started")
 
     args = docopt(__doc__)
-    args['--max-num-epochs'] = 300
+    args['--max-num-epochs'] = 200
     args['--patience'] = 5
 
     with open(os.path.join(args['--log-file-hyperparams'], 'hyper_params.log'), 'a') as log_file_hyper_params:
@@ -43,10 +43,10 @@ if __name__ == "__main__":
                                      "rnn_hidden_dim_2", "learning_rate", "validation_accuracy", "run_name"))
 
         # Model v1
-        action_embeddings = [64, 96, 128]
-        node_embedding = [16, 32, 64]
-        rnn_hidden_dim_1s = [64, 96, 128]
-        rnn_hidden_dim_2s = [64, 96, 128]
+        action_embeddings = [64, 128]
+        node_embedding = [16, 64]
+        rnn_hidden_dim_1s = [64, 128]
+        rnn_hidden_dim_2s = [64, 128]
         learning_rates = [0.005, 0.01]
 
         if args['--model'] == 'v1':
@@ -62,7 +62,6 @@ if __name__ == "__main__":
 
                         args_copy = args.copy()
                         args_copy.update(hyper_param_override)
-                        print(args_copy)
 
                         train.run(args_copy)
 
@@ -75,7 +74,7 @@ if __name__ == "__main__":
 
                         log_file_hyper_params.write("%15s  |  %15s  |  %15s  |  %15s  |  %15s  |  %15s  | %15s\n" %
                                                     ("-", action_embedding, rnn_hidden_dim_1,
-                                                     "-", learning_rate, accs[1].numpy(),
+                                                     "-", learning_rate, accs[0].numpy(),
                                                      run_name))
 
         # Model v2
