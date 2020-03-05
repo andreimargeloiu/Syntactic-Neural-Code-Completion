@@ -47,9 +47,10 @@ python hyper_parameter_search.py --model='v1'\
 
 Evaluate:
 ```
-python evaluate.py --trained-model="trained_models/RNNModel-2020-03-04-14-11-00_best_model.bin"\
-                   --saved-data-dir="./data/500"\
-                   --model="v2"
+python evaluate.py --trained-model="trained_models/RNNModel-2020-03-05-10-02-31_best_model.bin"\
+                   --saved-data-dir="./data/250"\
+                   --model="v2"\
+                   --qualitative
 ```
 
 Compute training data statistics:

@@ -152,10 +152,10 @@ class BaseModel(tf.keras.Model):
             bad_predictions_mask_withot_pad = tf.logical_and(tf.logical_not(correct_predictions_mask),
                                                              mask_non_pad)
             return tf.boolean_mask(
-                    target_token_seq[:, :-1],
+                    target_token_seq[:, 1:],
                     correct_predictions_mask_without_pad)\
                 , tf.boolean_mask(
-                    target_token_seq[:, :-1],
+                    target_token_seq[:, 1:],
                     bad_predictions_mask_withot_pad)\
 
         num_tokens = tf.math.count_nonzero(mask_non_pad, dtype=tf.float32)

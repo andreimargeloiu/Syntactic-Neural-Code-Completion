@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
         # Model v1
         action_embeddings = [64, 128]
-        node_embedding = [16, 64]
+        node_embeddings = [16, 64]
         rnn_hidden_dim_1s = [64, 128]
         rnn_hidden_dim_2s = [64, 128]
         learning_rates = [0.005, 0.01]
@@ -53,23 +53,21 @@ if __name__ == "__main__":
             for action_embedding in action_embeddings:
                 for rnn_hidden_dim_1 in rnn_hidden_dim_1s:
                     for learning_rate in learning_rates:
-                        hyper_param_override = {
-                            'action_embedding': action_embedding,
-                            'rnn_hidden_dim_1': rnn_hidden_dim_1,
-                            'learning_rate': learning_rates,
-                            '--run-name': f'rnn_best_model__ae{action_embedding}__rnn1{rnn_hidden_dim_1}__lr{learning_rate}'
-                        }
-
                         args_copy = args.copy()
-                        args_copy.update(hyper_param_override)
-
+                        args_copy['--run-name'] = f'rnn_best_model__ae{action_embedding}__rnn1{rnn_hidden_dim_1}__lr{learning_rate}'
+                        args_copy['--hypers-override'] = json.dumps({
+                            'action_embedding_size': action_embedding,
+                            'rnn_hidden_dim_1': rnn_hidden_dim_1,
+                            'learning_rate': learning_rate,
+                        })
                         train.run(args_copy)
 
-                        run_name = f"{hyper_param_override['--run-name']}_best_model.bin"
+                        run_name = f"{args_copy['--run-name']}_best_model.bin"
                         accs = evaluate({
                             '--model': args['--model'],
                             '--saved-data-dir': args['--saved-data-dir'],
-                            '--trained-model': os.path.join(args['--save-dir'], run_name)
+                            '--trained-model': os.path.join(args['--save-dir'], run_name),
+                            '--validation-only': True
                         })
 
                         log_file_hyper_params.write("%15s  |  %15s  |  %15s  |  %15s  |  %15s  |  %15s  | %15s\n" %
@@ -78,8 +76,7 @@ if __name__ == "__main__":
                                                      run_name))
 
         # Model v2
-        if args['--model'] == 'v2':
-            exit(0)
+
 
         # Model v3
 
