@@ -229,7 +229,8 @@ class SyntacticModelv1(BaseModel):
         super_params = super().get_default_hyperparameters()
         these_params = {
             "action_embedding_size": 64,
-            "rnn_hidden_dim_1": 64
+            "rnn_hidden_dim_1": 128,
+            "learning_rate": 0.005
         }
         super_params.update(these_params)
         return super_params
