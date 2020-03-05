@@ -13,6 +13,9 @@ Options:
     --log-file-hyperparams=NAME
     --tensorboard-logs-path=NAME    Path to tensorboard logs
     --compute-data
+    --max-num-epochs INT            [default: 200]
+    --patience INT                  [default: 10]
+
 """
 
 import json
@@ -29,8 +32,6 @@ if __name__ == "__main__":
     print("Started")
 
     args = docopt(__doc__)
-    args['--max-num-epochs'] = 200
-    args['--patience'] = 5
 
     with open(os.path.join(args['--log-file-hyperparams'], 'hyper_params.log'), 'a') as log_file_hyper_params:
 

@@ -41,7 +41,9 @@ python hyper_parameter_search.py --model='v1'\
                                   --saved-data-dir="./data/250"\
                                   --log-file='./logs/training.log'\
                                   --log-file-hyperparams='./logs'\
-                                  --tensorboard-logs-path="./logs_tensorboard"
+                                  --tensorboard-logs-path="./logs_tensorboard"\
+                                  --max-num-epochs 300\
+                                  --patience 10
                                   
 ```
 
