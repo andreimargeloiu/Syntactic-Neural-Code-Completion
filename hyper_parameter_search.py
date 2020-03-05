@@ -68,7 +68,8 @@ if __name__ == "__main__":
                             '--model': args['--model'],
                             '--saved-data-dir': args['--saved-data-dir'],
                             '--trained-model': os.path.join(args['--save-dir'], run_name),
-                            '--validation-only': True
+                            '--validation-only': True,
+                            '--qualitative': False
                         })
 
                         log_file_hyper_params.write("%15s  |  %15s  |  %15s  |  %15s  |  %15s  |  %15s  | %15s\n" %
