@@ -110,7 +110,7 @@ class BaseModel(tf.keras.Model):
         return None
 
     def compute_loss_and_acc(
-            self, rnn_output_logits: tf.Tensor, target_token_seq: tf.Tensor
+            self, rnn_output_logits: tf.Tensor, target_token_seq: tf.Tensor, qualitative_results = False
     ) -> LanguageModelLoss:
         """
         Args:
@@ -137,19 +137,32 @@ class BaseModel(tf.keras.Model):
 
         # Compute number of (correct) predictions
         pad_id = self.vocab_actions.get_id_or_unk(self.vocab_actions.get_pad())
-        mask = tf.logical_not(tf.equal(target_token_seq, pad_id))[:, 1:]
+        mask_non_pad = tf.logical_not(tf.equal(target_token_seq, pad_id))[:, 1:] # True where there are actual tokens (not PAD)
 
         # compute predictions correctness and drop the padding by applying the mask
-        predictions_status = tf.boolean_mask(
-            tf.equal(target_token_seq[:, 1:], tf.argmax(rnn_output_logits[:, :-1], axis=2)),
-            mask
+        correct_predictions_mask = tf.equal(target_token_seq[:, 1:], tf.argmax(rnn_output_logits[:, :-1], axis=2))
+        predictions_status = tf.logical_and(
+            correct_predictions_mask,
+            mask_non_pad
         )
 
-        num_tokens = len(predictions_status)
+        if qualitative_results:
+            correct_predictions_mask_without_pad = tf.logical_and(correct_predictions_mask,
+                                                                  mask_non_pad)
+            bad_predictions_mask_withot_pad = tf.logical_and(tf.logical_not(correct_predictions_mask),
+                                                             mask_non_pad)
+            return tf.boolean_mask(
+                    target_token_seq[:, :-1],
+                    correct_predictions_mask_without_pad)\
+                , tf.boolean_mask(
+                    target_token_seq[:, :-1],
+                    bad_predictions_mask_withot_pad)\
+
+        num_tokens = tf.math.count_nonzero(mask_non_pad, dtype=tf.float32)
         num_correct_tokens = tf.math.count_nonzero(predictions_status, dtype=tf.float32)
 
         # Mask out CE loss for padding tokens
-        token_ce_loss = tf.boolean_mask(token_ce_loss, mask)
+        token_ce_loss = tf.boolean_mask(token_ce_loss, mask_non_pad)
         token_ce_loss = tf.reduce_mean(token_ce_loss)
 
         return LanguageModelLoss(token_ce_loss, num_tokens, num_correct_tokens)
