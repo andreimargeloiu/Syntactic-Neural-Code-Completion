@@ -47,9 +47,9 @@ python hyper_parameter_search.py --model='v1'\
 
 Evaluate:
 ```
-python evaluate.py --trained-model="trained_models/RNNModel-2020-03-05-10-02-31_best_model.bin"\
+python evaluate.py --trained-model="trained_models/rnn_best_model__ae128__rnn164__lr0.005_best_model.bin"\
                    --saved-data-dir="./data/250"\
-                   --model="v2"\
+                   --model="v1"\
                    --qualitative
 ```
 

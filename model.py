@@ -111,7 +111,7 @@ class BaseModel(tf.keras.Model):
 
     def compute_loss_and_acc(
             self, rnn_output_logits: tf.Tensor, target_token_seq: tf.Tensor, qualitative_results = False
-    ) -> LanguageModelLoss:
+    ): #-> LanguageModelLoss:
         """
         Args:
             rnn_output_logits: tf.float32 Tensor of shape [B, T, V], representing
@@ -137,10 +137,10 @@ class BaseModel(tf.keras.Model):
 
         # Compute number of (correct) predictions
         pad_id = self.vocab_actions.get_id_or_unk(self.vocab_actions.get_pad())
-        mask_non_pad = tf.logical_not(tf.equal(target_token_seq, pad_id))[:, 1:] # True where there are actual tokens (not PAD)
+        mask_non_pad = tf.logical_not(tf.equal(target_token_seq, pad_id))[:, :-1] # True where there are actual tokens (not PAD)
 
         # compute predictions correctness and drop the padding by applying the mask
-        correct_predictions_mask = tf.equal(target_token_seq[:, 1:], tf.argmax(rnn_output_logits[:, :-1], axis=2))
+        correct_predictions_mask = tf.equal(tf.argmax(rnn_output_logits[:, :-1], target_token_seq[:, 1:], axis=2))
         predictions_status = tf.logical_and(
             correct_predictions_mask,
             mask_non_pad
@@ -157,6 +157,8 @@ class BaseModel(tf.keras.Model):
                 , tf.boolean_mask(
                     target_token_seq[:, 1:],
                     bad_predictions_mask_withot_pad)\
+                , rnn_output_logits\
+                , target_token_seq
 
         num_tokens = tf.math.count_nonzero(mask_non_pad, dtype=tf.float32)
         num_correct_tokens = tf.math.count_nonzero(predictions_status, dtype=tf.float32)

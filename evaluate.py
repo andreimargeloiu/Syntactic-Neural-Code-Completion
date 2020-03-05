@@ -39,7 +39,6 @@ def evaluate(args) -> list:
     with open(os.path.join(args['--saved-data-dir'], 'vocab_actions'), 'rb') as input:
         vocab_actions = pickle.load(input)
 
-
     if not args['--qualitative']:
         with open(os.path.join(args['--saved-data-dir'], 'train_data'), 'rb') as input:
             train_data = pickle.load(input)
@@ -75,12 +74,10 @@ def evaluate(args) -> list:
 
         return accs
 
-
     if args['--qualitative']:
         with open(os.path.join(args['--saved-data-dir'], 'valid_data'), 'rb') as input:
             valid_data = pickle.load(input)
         print(f"  Loaded {valid_data[0].shape[0]} validation samples.")
-
 
         valid_data_iterator = get_minibatch_iterator(
             valid_data,
@@ -90,9 +87,10 @@ def evaluate(args) -> list:
         )
 
         aux = next(valid_data_iterator)
-        good_predictions, bad_predictions = model.compute_loss_and_acc(model.compute_logits(tf.stack([*aux], axis=2), training=False),
-                                                                       target_token_seq=aux[1],
-                                                                       qualitative_results=True)
+        good_predictions, bad_predictions, logits, targets = model.compute_loss_and_acc(
+            model.compute_logits(tf.stack([*aux], axis=2), training=False),
+            target_token_seq=aux[1],
+            qualitative_results=True)
 
         good_predictions_counter = Counter(good_predictions.numpy())
         bad_predictions_counter = Counter(bad_predictions.numpy())
