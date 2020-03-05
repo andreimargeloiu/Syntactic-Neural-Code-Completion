@@ -44,7 +44,6 @@ python hyper_parameter_search.py --model='v1'\
                                   --tensorboard-logs-path="./logs_tensorboard"\
                                   --max-num-epochs 300\
                                   --patience 10
-                                  
 ```
 
 Evaluate:

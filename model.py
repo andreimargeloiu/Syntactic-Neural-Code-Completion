@@ -140,7 +140,7 @@ class BaseModel(tf.keras.Model):
         mask_non_pad = tf.logical_not(tf.equal(target_token_seq, pad_id))[:, :-1] # True where there are actual tokens (not PAD)
 
         # compute predictions correctness and drop the padding by applying the mask
-        correct_predictions_mask = tf.equal(tf.argmax(rnn_output_logits[:, :-1], target_token_seq[:, 1:], axis=2))
+        correct_predictions_mask = tf.equal(tf.argmax(rnn_output_logits[:, :-1], axis=2), target_token_seq[:, 1:])
         predictions_status = tf.logical_and(
             correct_predictions_mask,
             mask_non_pad
