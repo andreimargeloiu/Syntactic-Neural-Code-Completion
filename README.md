@@ -61,8 +61,8 @@ python read_training_data.py --train-data-dir="../corpus-features"
 
 Best models trained:
 ```
-v1 
-trained on 5000 trained files - RNNModel-2020-03-05-15-24-55_best_model.bin
+v1 RNNModel-2020-03-05-15-24-55_best_model.bin
+trained on 5000 trained files, --max-num-epochs 400 --patience 10 
 train_data:  Loss 0.0043, Acc 0.827
 valid_data:  Loss 0.0057, Acc 0.806
 seen_test_data:  Loss 0.0056, Acc 0.808

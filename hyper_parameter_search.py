@@ -35,7 +35,7 @@ def run_model(args, node_embeddings, action_embeddings, rnn_hidden_dim_1s, rnn_h
                 for rnn_hidden_dim_2 in rnn_hidden_dim_2s:
                     for learning_rate in learning_rates:
                         args_copy = args.copy()
-                        args_copy['--run-name'] = f'rnn_best_model__ae{action_embedding}__rnn1{rnn_hidden_dim_1}__lr{learning_rate}'
+                        args_copy['--run-name'] = f'rnn_best_model__{args["--model"]}__ne__{node_embedding}__ae{action_embedding}__rnn1{rnn_hidden_dim_1}__rnn2{rnn_hidden_dim_2}__lr{learning_rate}'
                         args_copy['--hypers-override'] = json.dumps({
                             'action_embedding_size': action_embedding,
                             'rnn_hidden_dim_1': rnn_hidden_dim_1,
