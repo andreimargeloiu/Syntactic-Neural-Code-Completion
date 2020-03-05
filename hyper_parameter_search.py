@@ -28,6 +28,35 @@ from docopt import docopt
 import train as train
 from evaluate import evaluate
 
+def run_model(args, node_embeddings, action_embeddings, rnn_hidden_dim_1s, rnn_hidden_dim_2s, learning_rates):
+    for node_embedding in node_embeddings:
+        for action_embedding in action_embeddings:
+            for rnn_hidden_dim_1 in rnn_hidden_dim_1s:
+                for rnn_hidden_dim_2 in rnn_hidden_dim_2s:
+                    for learning_rate in learning_rates:
+                        args_copy = args.copy()
+                        args_copy['--run-name'] = f'rnn_best_model__ae{action_embedding}__rnn1{rnn_hidden_dim_1}__lr{learning_rate}'
+                        args_copy['--hypers-override'] = json.dumps({
+                            'action_embedding_size': action_embedding,
+                            'rnn_hidden_dim_1': rnn_hidden_dim_1,
+                            'learning_rate': learning_rate,
+                        })
+                        train.run(args_copy)
+
+                        run_name = f"{args_copy['--run-name']}_best_model.bin"
+                        accs = evaluate({
+                            '--model': args['--model'],
+                            '--saved-data-dir': args['--saved-data-dir'],
+                            '--trained-model': os.path.join(args['--save-dir'], run_name),
+                            '--validation-only': True,
+                            '--qualitative': False
+                        })
+
+                        log_file_hyper_params.write("%15s  |  %15s  |  %15s  |  %15s  |  %15s  |  %15s  | %15s\n" %
+                                                    (node_embedding, action_embedding, rnn_hidden_dim_1,
+                                                     rnn_hidden_dim_2, learning_rate, accs[0].numpy(),
+                                                     run_name))
+
 if __name__ == "__main__":
     print("Started")
 
@@ -51,36 +80,8 @@ if __name__ == "__main__":
         learning_rates = [0.005, 0.01]
 
         if args['--model'] == 'v1':
-            for action_embedding in action_embeddings:
-                for rnn_hidden_dim_1 in rnn_hidden_dim_1s:
-                    for learning_rate in learning_rates:
-                        args_copy = args.copy()
-                        args_copy['--run-name'] = f'rnn_best_model__ae{action_embedding}__rnn1{rnn_hidden_dim_1}__lr{learning_rate}'
-                        args_copy['--hypers-override'] = json.dumps({
-                            'action_embedding_size': action_embedding,
-                            'rnn_hidden_dim_1': rnn_hidden_dim_1,
-                            'learning_rate': learning_rate,
-                        })
-                        train.run(args_copy)
-
-                        run_name = f"{args_copy['--run-name']}_best_model.bin"
-                        accs = evaluate({
-                            '--model': args['--model'],
-                            '--saved-data-dir': args['--saved-data-dir'],
-                            '--trained-model': os.path.join(args['--save-dir'], run_name),
-                            '--validation-only': True,
-                            '--qualitative': False
-                        })
-
-                        log_file_hyper_params.write("%15s  |  %15s  |  %15s  |  %15s  |  %15s  |  %15s  | %15s\n" %
-                                                    ("-", action_embedding, rnn_hidden_dim_1,
-                                                     "-", learning_rate, accs[0].numpy(),
-                                                     run_name))
-
-        # Model v2
-
-
-        # Model v3
-
-        if args['--model'] == 'v3':
+            run_model(args, [0], action_embeddings, rnn_hidden_dim_1s, [0], learning_rates)
+        elif args['--model'] == 'v2':
+            run_model(args, node_embeddings, action_embeddings, rnn_hidden_dim_1s, [0], learning_rates)
+        elif args['--model'] == 'v3':
             exit(0)

@@ -36,19 +36,19 @@ python train.py --model='v2'\
 
 Hyper-parameter search:
 ```
-python hyper_parameter_search.py --model='v1'\
+python hyper_parameter_search.py --model='v2'\
                                   --save-dir="./trained_models"\
                                   --saved-data-dir="./data/250"\
                                   --log-file='./logs/training.log'\
                                   --log-file-hyperparams='./logs'\
                                   --tensorboard-logs-path="./logs_tensorboard"\
-                                  --max-num-epochs 300\
+                                  --max-num-epochs 5\
                                   --patience 10
 ```
 
 Evaluate:
 ```
-python evaluate.py --trained-model="trained_models/rnn_best_model__ae128__rnn164__lr0.005_best_model.bin"\
+python evaluate.py --trained-model="trained_models/RNNModel-2020-03-05-15-24-55_best_model.bin"\
                    --saved-data-dir="./data/250"\
                    --model="v1"\
                    --qualitative
@@ -57,6 +57,19 @@ python evaluate.py --trained-model="trained_models/rnn_best_model__ae128__rnn164
 Compute training data statistics:
 ```
 python read_training_data.py --train-data-dir="../corpus-features"
+```
+
+Best models trained:
+```
+v1 
+trained on 5000 trained files - RNNModel-2020-03-05-15-24-55_best_model.bin
+train_data:  Loss 0.0043, Acc 0.827
+valid_data:  Loss 0.0057, Acc 0.806
+seen_test_data:  Loss 0.0056, Acc 0.808
+unseen_test_data:  Loss 0.0066, Acc 0.778
+
+v2
+trained on 5000 trained files
 ```
 
 
